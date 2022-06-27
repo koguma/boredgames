@@ -1,18 +1,6 @@
-# create-svelte
+# boredgames - WIP
 
-Everything you need to build a Svelte project, powered by [`create-svelte`](https://github.com/sveltejs/kit/tree/master/packages/create-svelte).
-
-## Creating a project
-
-If you're seeing this, you've probably already done this step. Congrats!
-
-```bash
-# create a new project in the current directory
-npm init svelte
-
-# create a new project in my-app
-npm init svelte my-app
-```
+Play a wide variety of games, be it : chess, checkers, etc... with your friends, bots, or anyone online!
 
 ## Developing
 
