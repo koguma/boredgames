@@ -2,6 +2,17 @@
 	<title>Join a room | boredgames</title>
 </svelte:head>
 
+<script>
+    import {roomId} from '$lib/stores.js'
+    import { onMount } from 'svelte';
+
+    let nickname
+    onMount(async() => {
+        
+        nickname.focus()
+    })
+</script>
+
 <div class="home">
 	<div class="hero min-h-screen bg-base-200">
 		<div class="hero-content text-center">
@@ -47,13 +58,13 @@
                                     <label class="label" for="nickname">
                                         <span class="label-text">Nickname</span>
                                     </label>
-                                    <input id="nickname" type="text" placeholder="" class="input input-bordered" required/>
+                                    <input  bind:this={nickname} id="nickname" type="text" placeholder="" class="input input-bordered" required/>
                                 </div>
                                 <div class="form-control">
                                     <label class="label" for="room-id">
                                         <span class="label-text">Room ID</span>
                                     </label>
-                                    <input id="room-id" type="text" placeholder="" class="input input-bordered" required/>
+                                    <input id="room-id" type="text" placeholder="" class="input input-bordered" bind:value="{$roomId}" required/>
                                 </div>
                                 <div class="form-control mt-6">
                                     <button class="btn btn-primary">Join</button>

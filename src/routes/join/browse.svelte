@@ -3,7 +3,9 @@
 </svelte:head>
 
 <script>
+    import {roomId} from '$lib/stores.js'
     let rooms = ["room-1", "room2", "jojdlk", "john", "sgvs"]
+
 </script>
 
 <div class="home">
@@ -60,17 +62,19 @@
                                     <label class="label cursor-pointer">
                                         <span class="label-text">{room}</span>
                                         {#if i == 0}
-                                            <input type="radio" name="radio-room" class="radio checked:bg-blue-500" checked/>
+                                            <input bind:group={$roomId} value={room} type="radio" name="radio-room" class="radio checked:bg-blue-500" checked/>
                                         {:else}
-                                            <input type="radio" name="radio-room" class="radio checked:bg-blue-500"/>
+                                            <input bind:group={$roomId} value={room} type="radio" name="radio-room" class="radio checked:bg-blue-500"/>
                                         {/if}
                                     </label>
                                   </div>
                                   {/each}
                                 </div>
-                                <div class="form-control mt-6">
-                                    <button class="btn btn-primary">Select</button>
-                                </div>
+                                <a href="/join">
+                                    <div class="form-control mt-6">
+                                        <button class="btn btn-primary">Select</button>
+                                    </div>
+                                </a>
                                 
                             </div>
                         </div>
