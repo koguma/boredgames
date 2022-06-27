@@ -8,8 +8,9 @@
 
     let nickname
     onMount(async() => {
-        
-        nickname.focus()
+        if ($roomId != "") {
+            nickname.focus()
+        }
     })
 </script>
 
