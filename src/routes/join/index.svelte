@@ -1,5 +1,5 @@
 <svelte:head>
-	<title>Create a room | boredgames</title>
+	<title>Join a room | boredgames</title>
 </svelte:head>
 
 <div class="home">
@@ -55,17 +55,12 @@
                                     </label>
                                     <input id="room-id" type="text" placeholder="" class="input input-bordered" required/>
                                 </div>
-                                <div class="form-control">
-                                    <label class="label cursor-pointer">
-                                        <span class="label-text">Private Lobby</span> 
-                                        <input type="checkbox" class="toggle" />
-                                    </label>
-                                  </div>
                                 <div class="form-control mt-6">
-                                    <button class="btn btn-primary">Create</button>
+                                    <button class="btn btn-primary">Join</button>
                                 </div>
                             </div>
                         </div>
+                        <a href="/join/browse" class="font-bold underline mt-5">Browse all public rooms</a>
                     </div>
                 </div>
             </div>
