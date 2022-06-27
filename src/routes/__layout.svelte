@@ -15,4 +15,7 @@
 </footer>
 
 <style>
+	footer {
+		margin-top: -5rem;
+	}
 </style>

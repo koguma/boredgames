@@ -7,24 +7,28 @@
 		<div class="hero-content text-center">
 			<div class="max-w-md">
 				<h1 class="text-5xl font-bold">Bored Games</h1>
-				<p class="py-6">Play {game} with friends, bots, or anyone online!</p>
-				<button class="btn btn-primary">Create Room</button>
+				<div class="flex items-center">
+					<p class="py-6">Play <span class="text-secondary font-bold">Connect-4</span> with friends, bots, or anyone online!</p>
+				</div>
+				<a href="/join">
+					<button class="btn btn-primary w-80 sm:w-40">Join Room</button>
+				</a>
+				<span class="mx-5 my-4 block sm:my-0 sm:inline">or</span>
+				<a href="/create">
+					<button class="btn btn-primary w-80 sm:w-40">Create Room</button>
+				</a>
 			</div>
 		</div>
 	</div>
 </div>
 
 <style>
-	.home {
-		margin-bottom: -5rem;
-	}
 </style>
 
 <script>
 import { onMount } from "svelte";
 
-	let games = ["Connect-4", "Chess", "Checkers"]
-	let game = ""
+	let games = ["Connect-4"]
 	// let i = 0
 	// let j = 0
 	// function updateMessage() {
