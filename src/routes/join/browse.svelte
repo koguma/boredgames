@@ -4,7 +4,18 @@
 
 <script>
     import {roomId} from '$lib/stores.js'
-    let rooms = ["room-1", "room2", "jojdlk", "john", "sgvs"]
+    
+    let newRoomId = $roomId
+    
+    let rooms = ["room-1", "room5", "jojdlk", "john", "sgvs"]
+
+    if (rooms.length > 0) {
+        newRoomId = rooms[0]
+    }
+
+    function selectRoom() {
+        $roomId = newRoomId
+    }
 
 </script>
 
@@ -62,15 +73,15 @@
                                     <label class="label cursor-pointer">
                                         <span class="label-text">{room}</span>
                                         {#if i == 0}
-                                            <input bind:group={$roomId} value={room} type="radio" name="radio-room" class="radio checked:bg-blue-500" checked/>
+                                            <input bind:group={newRoomId} value={room} type="radio" name="radio-room" class="radio checked:bg-blue-500" checked/>
                                         {:else}
-                                            <input bind:group={$roomId} value={room} type="radio" name="radio-room" class="radio checked:bg-blue-500"/>
+                                            <input bind:group={newRoomId} value={room} type="radio" name="radio-room" class="radio checked:bg-blue-500"/>
                                         {/if}
                                     </label>
                                   </div>
                                   {/each}
                                 </div>
-                                <a href="/join">
+                                <a href="/join" on:click={selectRoom}>
                                     <div class="form-control mt-6">
                                         <button class="btn btn-primary">Select</button>
                                     </div>

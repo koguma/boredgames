@@ -27,8 +27,18 @@ class Connect_4(Game):
     def __init__(self, room_id : str, creator: str) -> str:
         super(room_id)
         self.MAX_PLAYERS = 2
-        self.players.append(creator)
+        self.add_player(creator)
+        self.board = [[0]*6 for _ in range(7)]
         return self.room_id
+        
+    def make_move(self, player_id: int, coordinate: tuple) -> bool:
+        self.board[coordinate[0], coordinate[1]] = player_id
+        continue_game = self.calculate_win()
+        return continue_game
+
+    def calculate_win(self) -> bool:
+        pass
+    
 
 
 
