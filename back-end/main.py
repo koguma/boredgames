@@ -41,7 +41,7 @@ def get_rooms(type: str):
     return result
 
 @app.websocket("/ws/{type}/{room_id}")
-async def join_room(websocket: WebSocket, type: str, room_id: int, player_number : int):
+async def join_room(websocket: WebSocket, type: str, room_id: int):
     game = sentinel.find_room(type, room_id)
     await websocket.accept()
 
@@ -51,6 +51,7 @@ async def join_room(websocket: WebSocket, type: str, room_id: int, player_number
     if not game.add_player(websocket):
         await websocket.close(1002, "Room is full")
 
+    player_number = game.get_player_number(websocket)
     play = True
     try:
         while play:
@@ -63,13 +64,10 @@ async def join_room(websocket: WebSocket, type: str, room_id: int, player_number
                         await game.broadcast(f"{player_number} {coord}")
                     else:
                         await game.broadcast(f"{player_number} won")
+                        play = False
                         await game.remove_player(websocket)
                         sentinel.remove_room(game)
-                        play = False
-
     except WebSocketDisconnect:
         await game.remove_player(websocket)
         await game.broadcast(f"{player_number} disconnected")
         sentinel.remove_room(game)
-
-    await websocket.close(1000)

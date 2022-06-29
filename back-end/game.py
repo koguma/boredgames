@@ -25,6 +25,9 @@ class Game:
 
         return is_success
 
+    def get_player_number(self, player: WebSocket) -> int:
+        return self.players.index(player) + 1
+
     def remove_player(self, player: WebSocket) -> None:
         self.players.remove(player)
 
