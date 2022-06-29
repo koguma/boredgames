@@ -53,62 +53,60 @@ class Connect_4(Game):
                 return square
         return -1
 
-    
-    def is_same_vertically(self, column, square) -> bool:
-        count = 1
-        y1 = 2
-        y2 = 4
 
-        up = True
-        down = True
-        while y1 >= 0 and y2 <= 5 and (down or up):
-            if down:
-                if grid[column][y1] == square:
-                    count += 1
-                else:
-                    down = False
-                y1 -= 1
-            if up:
-                if grid[column][y2] == square:
-                    count += 1
-                else:
-                    up = False
-                y2 += 1
+    def calculate_horizontal_and_diagonal_win(self) -> int:
+
+        for i, square in enumerate(self.board[3]):
+            if square != 0:
+                if self.is_same_horizontally(i, square):
+                    return square
+                elif self.is_same_forward_diagonally(i, square):
+                    return square
+                elif self.is_same_backward_diagonally(i, square):
+                    return square
+        return -1
+
+    def is_same_forward_diagonally(self, row: int, square: int) -> bool:
+        count = 1
+        return True
+
+    def is_same_vertically(self, column: int, square: int) -> bool:
+        count = 1
+        count += self.vertical_count(column, 4, square, True)
+        count += self.vertical_count(column, 2, square, False)
         
         return True if count >= 4 else False
 
-    def calculate_horizontal_and_diagonal_win(self) -> int:
-        middle_column = self.board[3]
+    def vertical_count(self, column: int, y: int, square: int, up: bool) -> int:
+        if up:
+            if y > 5 or self.grid[column][y] != square:
+                return 0
+            else:
+                return 1 + self.vertical_count(column, y+1, square, up)
+        else:
+            if y < 0 or self.grid[column][y] != square:
+                return 0
+            else:
+                return 1 + self.vertical_count(column, y-1, square, up)
 
-        for i, square in enumerate(middle_column):
-            if square != 0 and self.is_same_horizontally(i, square):
-                return square
-                
-
-        return -1
-
-    def is_same_horizontally(self, row, square) -> bool:
+    def is_same_horizontally(self, row: int, square: int) -> bool:
         count = 1
-        x1 = 2
-        x2 = 4
-
-        left = True
-        right =  True
-        while x1 >= 0 and x2 <= 6 and (left or right):
-            if left:
-                if self.grid[x1][row] == square:
-                    count += 1
-                else:
-                    left = False
-                x1 -= 1
-            if right:
-                if self.grid[x2][row] == square:
-                    count += 1
-                else:
-                    right = False
-                x2 += 1
+        count += self.horizontal_count(row, 2, square, True)
+        count += self.horizontal_count(row, 4, square, False)
 
         return True if count >= 4 else False
+
+    def horizontal_count(self, row: int, x: int, square: int, left: bool) -> int:
+        if left:
+            if x < 0 or self.grid[x][row] != square:
+                return 0
+            else:
+                return 1 + self.horizontal_count(row, x-1, square, left)
+        else:
+            if x > 6 or self.grid[x][row] != square:
+                return 0
+            else:
+                return 1 + self.horizontal_count(row, x+1, square, left)
 
 class Sentinel:
     def __init__(self) -> None:
