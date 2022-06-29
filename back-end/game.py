@@ -47,19 +47,17 @@ class Sentinel:
     def __init__(self) -> None:
         self.rooms = {game_type: [] for game_type in games}
     
-    def create(self, game: Room) -> Union[str,bool]:
-        is_success = False
-        url = "/rooms/"
+    def create(self, game: Room) -> Union[str,int]:
+        # guard statements
+        if game.type != "connect-4": return 1
+        if len(game.room_id) == 0: return 2
+        if game.room_id in self.rooms["connect-4"]: return 3
 
-        if game.type == "connect-4" and len(game.room_id) >= 1 and game.room_id not in self.rooms["connect-4"]:
-            new_game = Connect_4(game.room_id)
-            url += new_game.room_id
-            self.rooms["connect-4"].append(new_game)
-            is_success = True
+        new_game = Connect_4(game.room_id)
+        url = "/rooms/connect-4/" + new_game.room_id
+        self.rooms["connect-4"].append(new_game)
         
-        return url if is_success else False
+        return url
 
-    def list_rooms(self, game_type: str) -> Union[list[str], bool]:
-        return False if game_type not in self.rooms else [game.room_id for game in self.rooms[game_type]]
-
-        
+    def list_rooms(self, game_type: str) -> Union[list[str], int]:
+        return 1 if game_type not in self.rooms else [game.room_id for game in self.rooms[game_type]]
