@@ -2,7 +2,7 @@
 	<title>Browse public rooms | boredgames</title>
 </svelte:head>
 
-<script>
+<script lang="ts">
     import {roomId} from '$lib/stores.js'
     
     let newRoomId = $roomId

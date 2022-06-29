@@ -1,8 +1,8 @@
-<script>
+<script lang="ts">
     import { page } from '$app/stores'
     import { onMount } from 'svelte';
 
-    let grid = []
+    let grid : number[][] = []
     let ROWS = 6
     let COLUMNS = 7
     
@@ -16,9 +16,9 @@
 
     let path = $page.params.id
 
-    let selected
+    let selected = -1
 
-    let positions = []
+    let positions : number[][] = []
 
     function handleClick() {
         if (selected != undefined) {
@@ -35,21 +35,21 @@
         updateCollection()
     })
 
-    function handleMouseMove(event) {
+    function handleMouseMove(event : MouseEvent) {
         let mouse_x = event.clientX
         for (let i = 0; i < positions.length; i++) {
-            if (mouse_x > positions[i][0] && mouse_x <= positions[i][0] + positions[i][1]) {
+            if (mouse_x > positions[i][0] && mouse_x <= positions[i][1]) {
                 selected = i
                 return
             }
         }
-        selected = undefined
+        selected = -1
     }
 
     function updateCollection() {
         positions = []
         Array.from(document.getElementsByClassName("columnIdentifier")).forEach((elem) => {
-            positions.push([elem.getBoundingClientRect().x,elem.getBoundingClientRect().width])
+            positions.push([elem.getBoundingClientRect().x,elem.getBoundingClientRect().x+ elem.getBoundingClientRect().width])
         })
     }
 </script>

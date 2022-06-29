@@ -2,11 +2,11 @@
 	<title>Join a room | boredgames</title>
 </svelte:head>
 
-<script>
+<script lang="ts">
     import {roomId} from '$lib/stores.js'
     import { onMount } from 'svelte';
 
-    let nickname
+    let nickname : HTMLElement
     onMount(async() => {
         if ($roomId != "") {
             nickname.focus()
