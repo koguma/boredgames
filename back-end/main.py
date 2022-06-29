@@ -5,10 +5,6 @@ sentinel = Sentinel()
 
 app = FastAPI()
 
-@app.get("/")
-def read_root():
-    return "Stop right there"
-
 @app.post("/create/", status_code=status.HTTP_201_CREATED)
 def create_room(room: Room):
     new_room = sentinel.create(room)
