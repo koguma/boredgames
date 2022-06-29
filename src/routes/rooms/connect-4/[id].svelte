@@ -5,6 +5,7 @@
     let grid = []
     let ROWS = 6
     let COLUMNS = 7
+    
     for (let i = 0; i < COLUMNS; i++) {
         let row = []
         for (let j=0; j < ROWS; j++) {
@@ -18,6 +19,17 @@
     let selected
 
     let positions = []
+
+    function handleClick() {
+        if (selected != undefined) {
+            for (let i = grid.length-1; i >= 0; i--) {
+                if (grid[selected][i] == 0) {
+                    grid[selected][i] = 1
+                    return
+                }
+            }
+        }
+    }
 
     onMount(async() => {
         updateCollection()
@@ -42,16 +54,16 @@
     }
 </script>
 
-<svelte:window on:resize={updateCollection} />
+<svelte:window on:resize={updateCollection}/>
 
-<div class="game flex items-center justify-center w-screen h-screen" on:mousemove={handleMouseMove}>
+<div class="game flex items-center justify-center w-screen h-screen" on:mousemove={handleMouseMove} on:click={handleClick}>
     <span class="test">{selected}</span>
     <div class="relative board grid grid-cols-7 bg-primary bg-primary py-3">
         {#each grid as column, i}
             <div class="grid grid-rows-6">
                 {#each column as square, j}
                     <div class="square w-20 h-20 relative" class:columnIdentifier={j == 0} class:columnIdentifierSelected={j == 0 && i == selected}>
-                        <div class="rounded-full bg-primary-content circle"></div>
+                        <div class="rounded-full bg-primary-content circle" class:red={square == 1}></div>
                     </div>
                 {/each}
             </div>
@@ -64,6 +76,10 @@
         position: absolute;
         top: 0;
         left: 0;
+    }
+
+    .red {
+        background-color: red;
     }
 
     .columnIdentifierSelected::before {

@@ -17,3 +17,11 @@ def create_room(room: Room):
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Error creating the room")
     
     return new_room
+
+@app.get("/rooms/{type}")
+def get_rooms(type: str):
+    result = sentinel.list_rooms(type)
+    if result == False:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Error fetching rooms")
+    
+    return result

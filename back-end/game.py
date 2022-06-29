@@ -1,3 +1,4 @@
+from tokenize import String
 from pydantic import BaseModel
 from typing import Union
 
@@ -44,15 +45,21 @@ class Connect_4(Game):
 
 class Sentinel:
     def __init__(self) -> None:
-        self.games = {game_type: [] for game_type in games}
+        self.rooms = {game_type: [] for game_type in games}
     
     def create(self, game: Room) -> Union[str,bool]:
         is_success = False
         url = "/rooms/"
 
-        if game.type == "connect-4" and game.room_id not in self.games["connect-4"]:
+        if game.type == "connect-4" and len(game.room_id) >= 1 and game.room_id not in self.rooms["connect-4"]:
             new_game = Connect_4(game.room_id)
             url += new_game.room_id
+            self.rooms["connect-4"].append(new_game)
             is_success = True
         
         return url if is_success else False
+
+    def list_rooms(self, game_type: str) -> Union[list[str], bool]:
+        return False if game_type not in self.rooms else [game.room_id for game in self.rooms[game_type]]
+
+        
