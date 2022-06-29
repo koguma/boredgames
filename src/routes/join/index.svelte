@@ -3,7 +3,7 @@
 </svelte:head>
 
 <script lang="ts">
-    import {roomId} from '$lib/stores.js'
+    import {roomId, name} from '$lib/stores.js'
     import { onMount } from 'svelte';
 
     let nickname : HTMLElement
@@ -59,7 +59,7 @@
                                     <label class="label" for="nickname">
                                         <span class="label-text">Nickname</span>
                                     </label>
-                                    <input  bind:this={nickname} id="nickname" type="text" placeholder="" class="input input-bordered" required/>
+                                    <input  bind:this={nickname} id="nickname" type="text" placeholder="" class="input input-bordered" bind:value={$name} required/>
                                 </div>
                                 <div class="form-control">
                                     <label class="label" for="room-id">

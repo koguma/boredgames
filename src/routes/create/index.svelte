@@ -2,7 +2,48 @@
 	<title>Create a room | boredgames</title>
 </svelte:head>
 
+<script lang="ts">
+    import {name} from '$lib/stores.js'
+    import {goto} from '$app/navigation'
+
+    let roomId = ""
+    let error = ""
+
+    async function createRoom() {
+        const res = await fetch('http://127.0.0.1:8000/create/', {
+            method: 'POST',
+            headers: {
+            'Accept': 'application/json',
+            'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({
+                type: "connect-4",
+                room_id: roomId,
+                is_private: true
+            })
+        })
+        const content = await res
+        const contentJson = await content.json()
+        if (res.status == 201) {
+            goto(contentJson)
+        } else {
+            error = contentJson.detail
+            setTimeout(() => {
+                error = ""
+            }, 3500)
+        }
+    }
+</script>
+
 <div class="home">
+    {#if error != ""}
+    <div class="alert alert-error shadow-lg absolute mt-12 w-1/2 left-1/4">
+        <div>
+            <svg xmlns="http://www.w3.org/2000/svg" class="stroke-current flex-shrink-0 h-6 w-6" fill="none" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 14l2-2m0 0l2-2m-2 2l-2-2m2 2l2 2m7-2a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
+            <span>Error! {error}</span>
+            </div>
+        </div>
+    {/if}
 	<div class="hero min-h-screen bg-base-200">
 		<div class="hero-content text-center">
             <div class="indicator">
@@ -47,13 +88,13 @@
                                     <label class="label" for="nickname">
                                         <span class="label-text">Nickname</span>
                                     </label>
-                                    <input id="nickname" type="text" placeholder="" class="input input-bordered" required/>
+                                    <input id="nickname" type="text" placeholder="" bind:value = {$name} class="input input-bordered" required/>
                                 </div>
                                 <div class="form-control">
                                     <label class="label" for="room-id">
                                         <span class="label-text">Room ID</span>
                                     </label>
-                                    <input id="room-id" type="text" placeholder="" class="input input-bordered" required/>
+                                    <input id="room-id" bind:value={roomId} type="text" placeholder="" class="input input-bordered" required/>
                                 </div>
                                 <div class="form-control">
                                     <label class="label cursor-pointer">
@@ -61,7 +102,7 @@
                                         <input type="checkbox" class="toggle" />
                                     </label>
                                   </div>
-                                <div class="form-control mt-6">
+                                <div class="form-control mt-6" on:click={createRoom}>
                                     <button class="btn btn-primary">Create</button>
                                 </div>
                             </div>

@@ -4,15 +4,24 @@
 
 <script lang="ts">
     import {roomId} from '$lib/stores.js'
+import { onMount } from 'svelte';
     
     let newRoomId = $roomId
     
-    let rooms = ["room-1", "room5", "jojdlk", "john", "sgvs"]
+    let rooms : string[] = []
 
-    if (rooms.length > 0) {
-        newRoomId = rooms[0]
-    }
+    onMount(async() => {
+        const res = await fetch('http://127.0.0.1:8000/rooms/connect-4/')
+        const content = await res
+        const contentJson = await content.json()
+        if (content.status == 200) {
+            rooms = contentJson
+            if (rooms.length > 0) {
+                newRoomId = rooms[0]
+            }
+        }
 
+    })
     function selectRoom() {
         $roomId = newRoomId
     }
@@ -67,19 +76,25 @@
                                     <input type="text" placeholder="Search..." class="input input-bordered" />
                                 </div>
                                 <div class="rooms overflow-y-auto">
-                                {#each rooms as room, i}
-                                  <div class="form-control mr-1">
-                                    <!-- svelte-ignore a11y-label-has-associated-control -->
-                                    <label class="label cursor-pointer">
-                                        <span class="label-text">{room}</span>
-                                        {#if i == 0}
-                                            <input bind:group={newRoomId} value={room} type="radio" name="radio-room" class="radio checked:bg-blue-500" checked/>
-                                        {:else}
-                                            <input bind:group={newRoomId} value={room} type="radio" name="radio-room" class="radio checked:bg-blue-500"/>
-                                        {/if}
-                                    </label>
-                                  </div>
-                                  {/each}
+                                {#if rooms.length != 0}
+                                    {#each rooms as room, i}
+                                        <div class="form-control mr-1">
+                                        <!-- svelte-ignore a11y-label-has-associated-control -->
+                                            <label class="label cursor-pointer">
+                                                <span class="label-text">{room}</span>
+                                                {#if i == 0}
+                                                    <input bind:group={newRoomId} value={room} type="radio" name="radio-room" class="radio checked:bg-blue-500" checked/>
+                                                {:else}
+                                                    <input bind:group={newRoomId} value={room} type="radio" name="radio-room" class="radio checked:bg-blue-500"/>
+                                                {/if}
+                                            </label>
+                                        </div>
+                                    {/each}
+                                {:else}
+                                    <div class="h-full w-full flex justify-center items-center">
+                                        <span>searching...</span>
+                                    </div>
+                                {/if}
                                 </div>
                                 <a href="/join" on:click={selectRoom}>
                                     <div class="form-control mt-6">

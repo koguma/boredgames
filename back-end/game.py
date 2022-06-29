@@ -1,24 +1,22 @@
-from curses import intrflush
-from operator import indexOf
-from tokenize import String
-import xdrlib
 from pydantic import BaseModel
 from typing import Union
+from fastapi import  WebSocket
 
 games = ["connect-4"]
 
 class Room(BaseModel):
     type: str
     room_id: str
-    creator: str
+    is_private: bool
 
 class Game:
-    def __init__(self, room_id: str) -> None:
-        self.players = []
+    def __init__(self, room_id: str, is_private: bool) -> None:
+        self.players : list[WebSocket] = []
         self.room_id = room_id
         self.MAX_PLAYERS = 1
+        self.is_private = is_private
 
-    def add_player(self, player: str) -> bool:
+    async def add_player(self, player: WebSocket) -> bool:
         is_success = False
         
         if (len(self.players) <= self.MAX_PLAYERS):
@@ -27,18 +25,32 @@ class Game:
 
         return is_success
 
+    def remove_player(self, player: WebSocket) -> None:
+        self.players.remove(player)
+
+    async def broadcast(self, message: str) -> None:
+        for player in self.players:
+            await player.send_text(message)
+
 class Connect_4(Game):
-    def __init__(self, room_id : str, creator: str) -> str:
-        super(room_id)
+    def __init__(self, room_id : str, is_private: bool) -> None:
+        super().__init__(room_id, is_private)
         self.MAX_PLAYERS = 2
-        self.add_player(creator)
         self.board = [[0]*7 for _ in range(6)] # column first then the row
-        return self.room_id
+        self.next_player_number = 1
         
-    def make_move(self, player_id: int, coordinate: tuple) -> int:
-        self.board[coordinate[0], coordinate[1]] = player_id
+    def make_move(self, player_number: int, coordinate: tuple) -> int:
+        self.board[coordinate[0], coordinate[1]] = player_number
         continue_game = self.calculate_all_wins()
+
+        self.next_turn()
         return continue_game
+
+    def next_turn(self):
+        if self.next_player_number == 1:
+            self.next_player_number = 2
+        else:
+            self.next_player_number = 1
 
     def calculate_all_wins(self) -> int:
         winner = self.calculate_vertical_win()
@@ -146,13 +158,24 @@ class Sentinel:
         # guard statements
         if game.type != "connect-4": return 1
         if len(game.room_id) == 0: return 2
-        if game.room_id in self.rooms["connect-4"]: return 3
+        for room in self.rooms["connect-4"]:
+            if game.room_id == room.room_id: return 3
 
-        new_game = Connect_4(game.room_id)
-        url = "/rooms/connect-4/" + new_game.room_id
+        print(self.rooms["connect-4"], game.room_id)
+        new_game = Connect_4(game.room_id, game.is_private)
         self.rooms["connect-4"].append(new_game)
         
-        return url
+        return "/rooms/connect-4/" + new_game.room_id
 
     def list_rooms(self, game_type: str) -> Union[list[str], int]:
         return 1 if game_type not in self.rooms else [game.room_id for game in self.rooms[game_type]]
+    
+    def find_room(self, game_type: str, room_id: str) -> Union[Connect_4, int]:
+        if game_type in self.rooms:
+            for room in self.rooms[game_type]:
+                if room.room_id == room_id:
+                    return room
+        return -1
+
+    def remove_room(self, room: Connect_4):
+        self.rooms["connect-4"].remove(room)
