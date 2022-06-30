@@ -35,130 +35,126 @@ class Game:
 
         return player_number
 
-    def get_player_number(self, player: WebSocket) -> int:
-        return self.players.index(player) + 1
-
     async def broadcast(self, message: str) -> None:
         for player in self.players:
             await player.send_text(message)
+
+COLUMNS_CONNECT_4 = 7
+ROWS_CONNECT_4 = 6
 
 class Connect_4(Game):
     def __init__(self, room_id : str, is_private: bool) -> None:
         super().__init__(room_id, is_private)
         self.MAX_PLAYERS = 2
-        self.board = [[0]*7 for _ in range(6)] # column first then the row
-        self.next_player_number = 1
+        self.board = [[0]*ROWS_CONNECT_4 for _ in range(COLUMNS_CONNECT_4)] # column first then the row
+        self.current_player = 1
         
-    def make_move(self, player_number: int, coordinate: tuple) -> int:
-        self.board[coordinate[0], coordinate[1]] = player_number
-        continue_game = self.calculate_all_wins()
-
+    def make_move(self, coordinate: tuple) -> int:
+        self.board[coordinate[0]][coordinate[1]] = self.current_player
+        if self.calculate_all_wins(): return self.current_player
         self.next_turn()
-        return continue_game
+        return 0
 
     def next_turn(self):
-        if self.next_player_number == 1:
-            self.next_player_number = 2
-        else:
-            self.next_player_number = 1
+        if self.current_player == 1:
+            self.current_player = 2
+        elif self.current_player == 2:
+            self.current_player = 1
 
     def calculate_all_wins(self) -> int:
-        winner = self.calculate_vertical_win()
-        if winner != -1: return winner
-
-        return max(self.calculate_horizontal_and_diagonal_win(), winner)
+        won = self.calculate_vertical_win()
+        if not won:
+            won = self.calculate_horizontal_and_diagonal_win()
+        return won
     
-    def calculate_vertical_win(self) -> int:  
+    def calculate_vertical_win(self) -> bool:  
         for i, column in enumerate(self.board):
             square = column[3]
-            if square != 0 and self.is_same_vertically(i, square):
-                return square
-        return -1
+            if square == self.current_player and self.is_same_vertically(i):
+                return True
+        return False
 
-    def calculate_horizontal_and_diagonal_win(self) -> int:
-
+    def calculate_horizontal_and_diagonal_win(self) -> bool:
         for i, square in enumerate(self.board[3]):
-            if square != 0:
-                if self.is_same_horizontally(i, square): return square
-                if self.is_same_forward_diagonally(i, square): return square
-                if self.is_same_backward_diagonally(i, square): return square
-        return -1
+            if square == self.current_player and (self.is_same_horizontally(i) or self.is_same_forward_diagonally(i) or self.is_same_backward_diagonally(i)):
+                return True
+        return False
 
-    def is_same_forward_diagonally(self, row: int, square: int) -> bool:
+    def is_same_forward_diagonally(self, row: int) -> bool:
         count = 1
-        count += self.diagonal_forward_count(4, row+1, square, True)
-        count += self.diagonal_forward_count(2, row-1, square, True)
+        count += self.diagonal_forward_count(4, row+1, True)
+        count += self.diagonal_forward_count(2, row-1, False)
         return True if count >= 4 else False
 
-    def is_same_backward_diagonally(self, row: int, square: int) -> bool:
+    def is_same_backward_diagonally(self, row: int) -> bool:
         count = 1
-        count += self.diagonal_backward_count(2, row+1, square, True)
-        count += self.diagonal_backward_count(4, row-1, square, True)
+        count += self.diagonal_backward_count(2, row+1, True)
+        count += self.diagonal_backward_count(4, row-1, False)
         return True if count >= 4 else False
 
     # \ <= diagonal check like this
-    def diagonal_backward_count(self, x: int, y: int, square: int, up: bool) -> int:
+    def diagonal_backward_count(self, x: int, y: int, up: bool) -> int:
         if up:
-            if x < 0 or y > 5 or self.board[x][y] != square:
+            if x < 0 or y > 5 or self.board[x][y] != self.current_player:
                 return 0
             else:
-                return 1 + self.diagonal_backward_count(x-1,y+1,square,up)
+                return 1 + self.diagonal_backward_count(x-1,y+1,up)
         else:
-            if x > 6 or y < 0 or self.board[x][y] != square:
+            if x > 6 or y < 0 or self.board[x][y] != self.current_player:
                 return 0
             else:
-                return 1 + self.diagonal_backward_count(x+1,y-1,square,up)
+                return 1 + self.diagonal_backward_count(x+1,y-1,up)
 
     # / <= diagonal check like this
-    def diagonal_forward_count(self, x: int, y: int, square: int, up: bool) -> int:
+    def diagonal_forward_count(self, x: int, y: int, up: bool) -> int:
         if up:
-            if x > 6 or y > 5 or self.board[x][y] != square:
+            if x > 6 or y > 5 or self.board[x][y] != self.current_player:
                 return 0
             else:
-                return 1 + self.diagonal_forward_count(x+1,y+1,square,up)
+                return 1 + self.diagonal_forward_count(x+1,y+1,up)
         else:
-            if x < 0 or y < 0 or self.board[x][y] != square:
+            if x < 0 or y < 0 or self.board[x][y] != self.current_player:
                 return 0
             else:
-                return 1 + self.diagonal_forward_count(x-1,y-1,square,up)
+                return 1 + self.diagonal_forward_count(x-1,y-1,up)
 
-    def is_same_vertically(self, column: int, square: int) -> bool:
+    def is_same_vertically(self, column: int) -> bool:
         count = 1
-        count += self.vertical_count(column, 4, square, True)
-        count += self.vertical_count(column, 2, square, False)
+        count += self.vertical_count(column, 4, True)
+        count += self.vertical_count(column, 2, False)
         
         return True if count >= 4 else False
 
-    def vertical_count(self, x: int, y: int, square: int, up: bool) -> int:
+    def vertical_count(self, x: int, y: int, up: bool) -> int:
         if up:
-            if y > 5 or self.grid[x][y] != square:
+            if y > 5 or self.board[x][y] != self.current_player:
                 return 0
             else:
-                return 1 + self.vertical_count(x, y+1, square, up)
+                return 1 + self.vertical_count(x, y+1, up)
         else:
-            if y < 0 or self.grid[x][y] != square:
+            if y < 0 or self.board[x][y] != self.current_player:
                 return 0
             else:
-                return 1 + self.vertical_count(x, y-1, square, up)
+                return 1 + self.vertical_count(x, y-1, up)
 
-    def is_same_horizontally(self, row: int, square: int) -> bool:
+    def is_same_horizontally(self, row: int) -> bool:
         count = 1
-        count += self.horizontal_count(2, row, square, True)
-        count += self.horizontal_count(4, row, square, False)
+        count += self.horizontal_count(2, row, True)
+        count += self.horizontal_count(4, row, False)
 
         return True if count >= 4 else False
 
-    def horizontal_count(self, x: int, y: int, square: int, left: bool) -> int:
+    def horizontal_count(self, x: int, y: int, left: bool) -> int:
         if left:
-            if x < 0 or self.grid[x][y] != square:
+            if x < 0 or self.board[x][y] != self.current_player:
                 return 0
             else:
-                return 1 + self.horizontal_count(x-1, y, square, left)
+                return 1 + self.horizontal_count(x-1, y, left)
         else:
-            if x > 6 or self.grid[x][y] != square:
+            if x > 6 or self.board[x][y] != self.current_player:
                 return 0
             else:
-                return 1 + self.horizontal_count(x+1, y, square, left)
+                return 1 + self.horizontal_count(x+1, y, left)
 
 class Sentinel:
     def __init__(self) -> None:

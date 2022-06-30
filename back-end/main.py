@@ -1,5 +1,4 @@
 from fastapi import FastAPI, WebSocketDisconnect, status, HTTPException, WebSocket
-import websockets
 from game import Room, Sentinel
 from fastapi.middleware.cors import CORSMiddleware
 
