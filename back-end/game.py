@@ -1,6 +1,7 @@
 from pydantic import BaseModel
 from typing import Union
-from fastapi import  WebSocket
+from fastapi import  WebSocket, status
+import websockets
 
 games = ["connect-4"]
 
@@ -14,22 +15,28 @@ class Game:
         self.players : list[WebSocket] = []
         self.room_id = room_id
         self.MAX_PLAYERS = 1
-        self.is_private = is_private
+        self.private = is_private
+    
+    def is_private(self) -> bool:
+        return self.private
+    
+    def is_ready(self) -> bool:
+        return len(self.players) == 2
 
     async def add_player(self, player: WebSocket) -> bool:
-        is_success = False
+        player_number = -1
+        await player.accept()
         
-        if (len(self.players) <= self.MAX_PLAYERS):
+        if (len(self.players) < self.MAX_PLAYERS):
             self.players.append(player)
-            is_success = True
+            player_number = len(self.players)
+        else:
+            await player.close(status.WS_1014_BAD_GATEWAY, "Room is full")
 
-        return is_success
+        return player_number
 
     def get_player_number(self, player: WebSocket) -> int:
         return self.players.index(player) + 1
-
-    def remove_player(self, player: WebSocket) -> None:
-        self.players.remove(player)
 
     async def broadcast(self, message: str) -> None:
         for player in self.players:
@@ -164,7 +171,6 @@ class Sentinel:
         for room in self.rooms["connect-4"]:
             if game.room_id == room.room_id: return 3
 
-        print(self.rooms["connect-4"], game.room_id)
         new_game = Connect_4(game.room_id, game.is_private)
         self.rooms["connect-4"].append(new_game)
         

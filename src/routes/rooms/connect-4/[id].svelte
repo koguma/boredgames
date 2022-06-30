@@ -1,6 +1,7 @@
 <script lang="ts">
     import { page } from '$app/stores'
     import { onMount } from 'svelte';
+    import {goto} from '$app/navigation'
 
     let grid : number[][] = []
     let ROWS = 6
@@ -14,14 +15,12 @@
         grid.push(row)
     }
 
-    let path = $page.params.id
-
     let selected = -1
 
     let positions : number[][] = []
 
     function handleClick() {
-        if (selected != undefined) {
+        if (selected != -1) {
             for (let i = grid.length-1; i >= 0; i--) {
                 if (grid[selected][i] == 0) {
                     grid[selected][i] = 1
@@ -30,9 +29,20 @@
             }
         }
     }
-
+    
     onMount(async() => {
         updateCollection()
+        
+        let socket = new WebSocket('ws://localhost:8000/ws/connect-4/'+$page.params.id)
+        socket.addEventListener("open", (event) => {
+            console.log(event)
+        } )
+        socket.addEventListener("messages", (event) => {
+            console.log(event)
+        } )
+        socket.addEventListener("close", () => {
+            goto("/browse/")
+        })
     })
 
     function handleMouseMove(event : MouseEvent) {

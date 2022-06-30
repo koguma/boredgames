@@ -6,8 +6,8 @@ from fastapi.middleware.cors import CORSMiddleware
 sentinel = Sentinel()
 
 origins = [
-    "http://127.0.0.1:3000",
-    "http://127.0.0.1"
+    "http://localhost:3000",
+    "http://localhost"
 ]
 
 app = FastAPI()
@@ -41,21 +41,16 @@ def get_rooms(type: str):
     return result
 
 @app.websocket("/ws/{type}/{room_id}")
-async def join_room(websocket: WebSocket, type: str, room_id: int):
+async def join_room(websocket: WebSocket, type: str, room_id: str):
     game = sentinel.find_room(type, room_id)
-    await websocket.accept()
+    if game == -1: return
 
-    if game == -1:
-        await websocket.close(1001, "Room does not exist")
-
-    if not game.add_player(websocket):
-        await websocket.close(1002, "Room is full")
-
-    player_number = game.get_player_number(websocket)
-    play = True
+    player_number = await game.add_player(websocket)
+    await websocket.send_text(f"{player_number}")
     try:
-        while play:
-            if len(game.players) == 2:
+        while True:
+            if game.is_ready():
+                print("hi")
                 if game.next_player_number == player_number:
                     coord = await websocket.receive_text()
                     coordinates = coord.split(",").strip("()")
@@ -64,10 +59,9 @@ async def join_room(websocket: WebSocket, type: str, room_id: int):
                         await game.broadcast(f"{player_number} {coord}")
                     else:
                         await game.broadcast(f"{player_number} won")
-                        play = False
-                        await game.remove_player(websocket)
                         sentinel.remove_room(game)
+                        return
+
     except WebSocketDisconnect:
-        await game.remove_player(websocket)
         await game.broadcast(f"{player_number} disconnected")
         sentinel.remove_room(game)
