@@ -1,6 +1,7 @@
 from fastapi import FastAPI, WebSocketDisconnect, status, HTTPException, WebSocket
 from game import Room, Sentinel
 from fastapi.middleware.cors import CORSMiddleware
+import asyncio
 
 sentinel = Sentinel()
 
@@ -21,46 +22,62 @@ app.add_middleware(
 
 @app.post("/create/", status_code=status.HTTP_201_CREATED)
 def create_room(room: Room):
-    new_room = sentinel.create(room)
+    new_room = sentinel.create_room(room)
     
     if new_room == 1:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Invalid game-type")
     elif new_room == 2:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Room ID must be >= 1 character")
     elif new_room == 3:
-        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Room ID already exists")
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Room already exists")
+
     return new_room
 
-@app.get("/rooms/{type}")
-def get_rooms(type: str):
-    result = sentinel.list_rooms(type)
-    if result == 1:
-        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Invalid game-type")
+# @app.get("/rooms/{type}")
+# def list_rooms(type: str):
+#     result = sentinel.list_rooms(type)
+    
+#     if result == 1:
+#         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Invalid game-type")
+    
+#     return result
 
-    return result
-
-@app.websocket("/ws/{type}/{room_id}")
-async def join_room(websocket: WebSocket, type: str, room_id: str):
-    game = sentinel.find_room(type, room_id)
-    if game == -1: return
-
-    player_number = await game.add_player(websocket)
-    await websocket.send_text(f"{player_number}")
-    try:
-        while True:
-            if game.is_ready():
-                print("hi")
-                if game.next_player_number == player_number:
+@app.websocket("/ws/{game_type}/{room_id}")
+async def join_room(websocket: WebSocket, game_type: str, room_id: str):
+    await websocket.accept()
+    game = sentinel.join_room(websocket, game_type, room_id)
+    
+    if game == 1:
+        await websocket.close(status.WS_1003_UNSUPPORTED_DATA, "Invalid game-type")
+    elif game == 2:
+        await websocket.close(status.WS_1003_UNSUPPORTED_DATA, "Room does not exist")
+    elif game == 3:
+        await websocket.close(status.WS_1013_TRY_AGAIN_LATER, "Room is full")
+    else:
+        player = game.get_player(websocket)
+        await websocket.send_json({"player": player})
+        try:
+            while True:
+                if game.is_ready() and game.current_player == player:
                     coord = await websocket.receive_text()
-                    coordinates = coord.split(",").strip("()")
-                    winner = game.make_move(player_number, tuple(int(coordinates[0], int(coordinates[1]))))
-                    if winner == -1:
-                        await game.broadcast(f"{player_number} {coord}")
+                    coords = tuple(map(int,coord.split(",")))
+                    winner = game.make_move(player, coords)
+                    if winner == 0:
+                        await game.broadcast({
+                            "x": coords[0],
+                            "y": coords[1],
+                            "player": player
+                        })
+                    elif winner == 3:
+                        await game.broadcast({"message": "draw"})
+                        break
                     else:
-                        await game.broadcast(f"{player_number} won")
-                        sentinel.remove_room(game)
-                        return
+                        await game.broadcast({"message": f"{player} won"})
+                        break
+                else:
+                    await asyncio.sleep(1)
+        except WebSocketDisconnect:
+            game.disconnect(websocket)
+            await game.broadcast({"message": f"{player} disconnected"})
 
-    except WebSocketDisconnect:
-        await game.broadcast(f"{player_number} disconnected")
-        sentinel.remove_room(game)
+        sentinel.remove_room(game_type,game)

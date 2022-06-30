@@ -3,6 +3,7 @@
     import { onMount } from 'svelte';
     import {goto} from '$app/navigation'
 
+
     let grid : number[][] = []
     let ROWS = 6
     let COLUMNS = 7
@@ -19,31 +20,47 @@
 
     let positions : number[][] = []
 
+    let socket : WebSocket
+
+    let player : number
+
+    let turn = 1
+
+    onMount(async() => {
+        updateCollection()
+        socket = new WebSocket('ws://localhost:8000/ws/connect-4/'+$page.params.id)
+        socket.addEventListener("message", (event) => {
+            let recieved = JSON.parse(event.data)
+            if ("x" in recieved && "y" in recieved) {
+                grid[recieved["x"]][recieved["y"]] = recieved["player"]
+                if (recieved["player"] == 1) {
+                    turn = 2
+                } else {
+                    turn = 1
+                }
+            } else if(!("message" in recieved)) {
+                player = recieved["player"]
+            } else {
+                console.log(recieved["message"])
+            }
+        } )
+        socket.addEventListener("close", () => {
+            goto("/create/")
+        })
+    })
+
     function handleClick() {
         if (selected != -1) {
             for (let i = grid.length-1; i >= 0; i--) {
                 if (grid[selected][i] == 0) {
-                    grid[selected][i] = 1
-                    return
+                    if (socket.readyState <= 1 && turn == player) {
+                        socket.send(`${selected},${i}`)
+                        return
+                    }
                 }
             }
         }
     }
-    
-    onMount(async() => {
-        updateCollection()
-        
-        let socket = new WebSocket('ws://localhost:8000/ws/connect-4/'+$page.params.id)
-        socket.addEventListener("open", (event) => {
-            console.log(event)
-        } )
-        socket.addEventListener("messages", (event) => {
-            console.log(event)
-        } )
-        socket.addEventListener("close", () => {
-            goto("/browse/")
-        })
-    })
 
     function handleMouseMove(event : MouseEvent) {
         let mouse_x = event.clientX
@@ -72,8 +89,8 @@
         {#each grid as column, i}
             <div class="grid grid-rows-6">
                 {#each column as square, j}
-                    <div class="square w-20 h-20 relative" class:columnIdentifier={j == 0} class:columnIdentifierSelected={j == 0 && i == selected}>
-                        <div class="rounded-full bg-primary-content circle" class:red={square == 1}></div>
+                    <div class="square w-20 h-20 relative" class:columnIdentifier={j == 0} class:columnIdentifierSelected={j == 0 && i == selected} class:redBefore={player == 1} class:yellowBefore={player == 2}>
+                        <div class="rounded-full bg-primary-content circle" class:red={square == 1} class:yellow={square == 2}></div>
                     </div>
                 {/each}
             </div>
@@ -92,6 +109,17 @@
         background-color: red;
     }
 
+    .yellow {
+        background-color: yellow;
+    }
+
+    .redBefore.columnIdentifierSelected::before {
+        border-top: 0.5rem solid red !important;
+    }
+    .yellowBefore.columnIdentifierSelected::before {
+        border-top: 0.5rem solid yellow !important;
+    }
+
     .columnIdentifierSelected::before {
         position: absolute;
         content: "";
@@ -100,7 +128,7 @@
         border-left: 0.5rem solid transparent;
         border-right: 0.5rem solid transparent;
         
-        border-top: 0.5rem solid #f00;
+        border-top: 0.5rem solid transparent;
         top: -2.25rem;
         left: 40%;
     }

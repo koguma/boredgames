@@ -1,9 +1,6 @@
 from pydantic import BaseModel
 from typing import Union
-from fastapi import  WebSocket, status
-import websockets
-
-games = ["connect-4"]
+from fastapi import  WebSocket
 
 class Room(BaseModel):
     type: str
@@ -12,85 +9,91 @@ class Room(BaseModel):
 
 class Game:
     def __init__(self, room_id: str, is_private: bool) -> None:
-        self.players : list[WebSocket] = []
+        self.connections = {}
         self.room_id = room_id
         self.MAX_PLAYERS = 1
-        self.private = is_private
+        self.is_private = is_private
+
+    def add_player(self, websocket: WebSocket) -> bool:
+        flag = False
+
+        if len(self.connections) < self.MAX_PLAYERS:
+            self.connections[websocket] = len(self.connections) + 1
+            flag = True
+
+        return flag
+
+    def disconnect_all(self) -> None:
+        self.connections = {}
     
-    def is_private(self) -> bool:
-        return self.private
+    def disconnect(self, websocket: WebSocket) -> None:
+        self.connections.pop(websocket)
+        
+    def get_player(self, websocket: WebSocket) -> int:
+        return self.connections[websocket]
     
     def is_ready(self) -> bool:
-        return len(self.players) == 2
+        return len(self.connections) == self.MAX_PLAYERS
 
-    async def add_player(self, player: WebSocket) -> bool:
-        player_number = -1
-        await player.accept()
-        
-        if (len(self.players) < self.MAX_PLAYERS):
-            self.players.append(player)
-            player_number = len(self.players)
-        else:
-            await player.close(status.WS_1014_BAD_GATEWAY, "Room is full")
-
-        return player_number
-
-    async def broadcast(self, message: str) -> None:
-        for player in self.players:
-            await player.send_text(message)
-
-COLUMNS_CONNECT_4 = 7
-ROWS_CONNECT_4 = 6
+    async def broadcast(self, mesage: dict):
+        for websocket in self.connections:
+            await websocket.send_json(mesage)
 
 class Connect_4(Game):
     def __init__(self, room_id : str, is_private: bool) -> None:
         super().__init__(room_id, is_private)
         self.MAX_PLAYERS = 2
-        self.board = [[0]*ROWS_CONNECT_4 for _ in range(COLUMNS_CONNECT_4)] # column first then the row
+        self.board = [[0]*6 for _ in range(7)]
         self.current_player = 1
+        self.remaining_space = 6*7
+
+    def make_move(self, player: int, coords: tuple) -> int:
+        if player != self.current_player:
+            return -1
+        self.board[coords[0]][coords[1]] = self.current_player
+        self.remaining_space -= 1
         
-    def make_move(self, coordinate: tuple) -> int:
-        self.board[coordinate[0]][coordinate[1]] = self.current_player
-        if self.calculate_all_wins(): return self.current_player
-        self.next_turn()
+        if self.is_game_over(): return self.current_player
+        if self.remaining_space == 0: return 3
+
+        self.current_player = 1 if self.current_player == 2 else 2
+
         return 0
-
-    def next_turn(self):
-        if self.current_player == 1:
-            self.current_player = 2
-        elif self.current_player == 2:
-            self.current_player = 1
-
-    def calculate_all_wins(self) -> int:
-        won = self.calculate_vertical_win()
-        if not won:
-            won = self.calculate_horizontal_and_diagonal_win()
-        return won
     
-    def calculate_vertical_win(self) -> bool:  
+    def is_game_over(self) -> bool:  
         for i, column in enumerate(self.board):
             square = column[3]
             if square == self.current_player and self.is_same_vertically(i):
                 return True
-        return False
 
-    def calculate_horizontal_and_diagonal_win(self) -> bool:
         for i, square in enumerate(self.board[3]):
-            if square == self.current_player and (self.is_same_horizontally(i) or self.is_same_forward_diagonally(i) or self.is_same_backward_diagonally(i)):
+            if square == self.current_player and (self.is_same_horizontally(i) or self.is_same_diagonally(i)):
                 return True
+        
         return False
 
-    def is_same_forward_diagonally(self, row: int) -> bool:
-        count = 1
-        count += self.diagonal_forward_count(4, row+1, True)
-        count += self.diagonal_forward_count(2, row-1, False)
+    def is_same_diagonally(self, row: int) -> bool:
+        count = 1 + self.diagonal_forward_count(4, row+1, True) + self.diagonal_forward_count(2, row-1, False)
+        if count < 4: 
+            count = 1 + self.diagonal_backward_count(2, row+1, True) + self.diagonal_backward_count(4, row-1, False)
         return True if count >= 4 else False
 
-    def is_same_backward_diagonally(self, row: int) -> bool:
-        count = 1
-        count += self.diagonal_backward_count(2, row+1, True)
-        count += self.diagonal_backward_count(4, row-1, False)
+    def is_same_vertically(self, column: int) -> bool:
+        count = 1 + self.vertical_count(column, 4, True) + self.vertical_count(column, 2, False)
+        
         return True if count >= 4 else False
+
+    def diagonal_backward_count(self, x: int, y: int, up: bool) -> int:
+        if up:
+            if x < 0 or y > 5 or self.board[x][y] != self.current_player:
+                return 0
+            else:
+                return 1 + self.diagonal_backward_count(x-1,y+1,up)
+        else:
+            if x > 6 or y < 0 or self.board[x][y] != self.current_player:
+                return 0
+            else:
+                return 1 + self.diagonal_backward_count(x+1,y-1,up)
 
     # \ <= diagonal check like this
     def diagonal_backward_count(self, x: int, y: int, up: bool) -> int:
@@ -117,13 +120,6 @@ class Connect_4(Game):
                 return 0
             else:
                 return 1 + self.diagonal_forward_count(x-1,y-1,up)
-
-    def is_same_vertically(self, column: int) -> bool:
-        count = 1
-        count += self.vertical_count(column, 4, True)
-        count += self.vertical_count(column, 2, False)
-        
-        return True if count >= 4 else False
 
     def vertical_count(self, x: int, y: int, up: bool) -> int:
         if up:
@@ -158,29 +154,35 @@ class Connect_4(Game):
 
 class Sentinel:
     def __init__(self) -> None:
-        self.rooms = {game_type: [] for game_type in games}
+        self.games = ["connect-4"]
+        self.rooms = {game_type: [] for game_type in self.games}
     
-    def create(self, game: Room) -> Union[str,int]:
+    def create_room(self, game: Room) -> Union[str,int]:
         # guard statements
-        if game.type != "connect-4": return 1
+        if game.type not in self.games: return 1
         if len(game.room_id) == 0: return 2
-        for room in self.rooms["connect-4"]:
-            if game.room_id == room.room_id: return 3
+        if any(game.room_id == room.room_id for room in self.rooms[game.type]): return 3
 
-        new_game = Connect_4(game.room_id, game.is_private)
-        self.rooms["connect-4"].append(new_game)
+        if game.type == "connect-4":
+            new_game = Connect_4(game.room_id, game.is_private)
+        self.rooms[game.type].append(new_game)
         
-        return "/rooms/connect-4/" + new_game.room_id
+        return f"/rooms/{game.type}/{new_game.room_id}"
 
-    def list_rooms(self, game_type: str) -> Union[list[str], int]:
-        return 1 if game_type not in self.rooms else [game.room_id for game in self.rooms[game_type]]
+    def remove_room(self, game_type: str, room: Game) -> int:
+        if game_type not in self.games: return 1
+        room.disconnect_all()
+        self.rooms[game_type].remove(room)
+
+    def get_all_rooms(self) -> dict:
+        return {game_type: [(i,game.room_id) for i, game in enumerate(self.rooms[game_type])] for game_type in self.rooms}
     
-    def find_room(self, game_type: str, room_id: str) -> Union[Connect_4, int]:
-        if game_type in self.rooms:
-            for room in self.rooms[game_type]:
-                if room.room_id == room_id:
-                    return room
-        return -1
-
-    def remove_room(self, room: Connect_4):
-        self.rooms["connect-4"].remove(room)
+    def join_room(self, websocket: WebSocket, game_type: str, room_id: str) -> Union[Game, int]:
+        if game_type not in self.rooms: return 1
+        
+        room = next((game for game in self.rooms[game_type] if game.room_id == room_id), None)
+        
+        if not room: return 2
+        if not room.add_player(websocket): return 3
+        
+        return room

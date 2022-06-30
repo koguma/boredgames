@@ -13,5 +13,5 @@ while True:
     loc = input("Enter coordinate e.g. col,row: ").split(",")
     finished = a.make_move((int(loc[0]),int(loc[1])))
     if finished:
-        print("Winner:", finished)
+        print("Winner:", a.current_player)
         break
