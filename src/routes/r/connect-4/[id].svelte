@@ -2,9 +2,10 @@
     import { page } from '$app/stores'
     import { onMount } from 'svelte';
     import {goto} from '$app/navigation'
+    import {name} from '$lib/stores.js'
 
 
-    let grid : number[][] = []
+    let board : number[][] = []
     let ROWS = 6
     let COLUMNS = 7
     
@@ -13,7 +14,7 @@
         for (let j=0; j < ROWS; j++) {
             row.push(0)
         }
-        grid.push(row)
+        board.push(row)
     }
 
     let selected = -1
@@ -24,37 +25,47 @@
 
     let player : number
 
+    let opponent : string
+
     let turn = 1
 
     onMount(async() => {
         updateCollection()
-        socket = new WebSocket('ws://localhost:8000/ws/connect-4/'+$page.params.id)
+        socket = new WebSocket(`ws://localhost:8000/ws/connect-4?nickname=${$name}&room_id=${$page.params.id}`)
         socket.addEventListener("message", (event) => {
             let recieved = JSON.parse(event.data)
             if ("x" in recieved && "y" in recieved) {
-                grid[recieved["x"]][recieved["y"]] = recieved["player"]
+                board[recieved["x"]][recieved["y"]] = recieved["player"]
                 if (recieved["player"] == 1) {
                     turn = 2
                 } else {
                     turn = 1
                 }
             } else if(!("message" in recieved)) {
-                player = recieved["player"]
+                if ("you" in recieved) {
+                    player = recieved["you"]
+                    console.log(player)
+                } else {
+                    opponent = recieved["opponent"]
+                    console.log(opponent)
+                }
             } else {
                 console.log(recieved["message"])
+                socket.close(1000,"game end")
             }
         } )
         socket.addEventListener("close", () => {
-            goto("/create/")
+            goto("/custom/")
         })
     })
 
     function handleClick() {
         if (selected != -1) {
-            for (let i = grid.length-1; i >= 0; i--) {
-                if (grid[selected][i] == 0) {
+            for (let i = board.length-1; i >= 0; i--) {
+                if (board[selected][i] == 0) {
                     if (socket.readyState <= 1 && turn == player) {
                         socket.send(`${selected},${i}`)
+                        turn = 0
                         return
                     }
                 }
@@ -84,9 +95,9 @@
 <svelte:window on:resize={updateCollection}/>
 
 <div class="game flex items-center justify-center w-screen h-screen" on:mousemove={handleMouseMove} on:click={handleClick}>
-    <span class="test">{selected}</span>
-    <div class="relative board grid grid-cols-7 bg-primary bg-primary py-3">
-        {#each grid as column, i}
+    <span class="test">{opponent}</span>
+    <div class="relative grid grid grid-cols-7 bg-primary bg-primary py-3">
+        {#each board as column, i}
             <div class="grid grid-rows-6">
                 {#each column as square, j}
                     <div class="square w-20 h-20 relative" class:columnIdentifier={j == 0} class:columnIdentifierSelected={j == 0 && i == selected} class:redBefore={player == 1} class:yellowBefore={player == 2}>

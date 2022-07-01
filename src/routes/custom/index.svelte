@@ -5,11 +5,25 @@
 <script lang="ts">
     import {name} from '$lib/stores.js'
     import {goto} from '$app/navigation'
+    import { page } from '$app/stores'
+    import { onMount } from 'svelte';
 
-    let roomId = ""
+    let roomId = ($page.url.search == "") ? "" : $page.url.search.slice(1)
+
     let error = ""
+    let matching = false
+    let url = ""
 
     async function createRoom() {
+        if (roomId == "" || $name == "") {
+            error = "room id and nickname needs to be filled"
+            setTimeout(() => {
+                error = ""
+            }, 3500)
+            return
+        }
+        matching = true
+        url = $page.url.host + "/custom?" + roomId
         const res = await fetch('http://127.0.0.1:8000/create/', {
             method: 'POST',
             headers: {
@@ -18,12 +32,12 @@
             },
             body: JSON.stringify({
                 type: "connect-4",
-                room_id: roomId,
-                is_private: true
+                room_id: roomId
             })
         })
         const content = await res
         const contentJson = await content.json()
+        matching = true
         if (res.status == 201) {
             goto(contentJson)
         } else {
@@ -32,6 +46,15 @@
                 error = ""
             }, 3500)
         }
+    }
+
+    function copy() {
+        let dummy = document.createElement("textarea");
+        document.body.appendChild(dummy)
+        dummy.value = url
+        dummy.select()
+        document.execCommand("copy")
+        document.body.removeChild(dummy)
     }
 </script>
 
@@ -95,18 +118,22 @@
                                         <span class="label-text">Room ID</span>
                                     </label>
                                     <input id="room-id" bind:value={roomId} type="text" placeholder="" class="input input-bordered" required/>
-                                </div>
-                                <div class="form-control">
-                                    <label class="label cursor-pointer">
-                                        <span class="label-text">Private Lobby</span> 
-                                        <input type="checkbox" class="toggle" />
+                                    <!-- svelte-ignore a11y-label-has-associated-control -->
+                                    <label class="label">
+                                        <span class="label-text-alt text-left">other players can join using the same room id</span>
                                     </label>
-                                  </div>
-                                <div class="form-control mt-6" on:click={createRoom}>
-                                    <button class="btn btn-primary">Create</button>
+                                </div>
+                                <div class="form-control mt-3" on:click={createRoom}>
+                                    <button class="btn btn-primary">{#if matching}Matching...{:else}Join{/if}</button>
                                 </div>
                             </div>
                         </div>
+                        {#if matching}
+                            <button class="btn btn-outline btn-info flex justify-around mt-5" on:click={copy}>
+                                <span class="truncate">url: {url}</span>
+                                <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="feather feather-clipboard"><path d="M16 4h2a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h2"></path><rect x="8" y="2" width="8" height="4" rx="1" ry="1"></rect></svg>
+                            </button>
+                        {/if}
                     </div>
                 </div>
             </div>
