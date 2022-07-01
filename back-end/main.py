@@ -80,23 +80,24 @@ async def join_room(websocket: WebSocket, game_type: str, nickname: str, room_id
     public = room_id == ""
     game = sentinel.get_room(game_type, room_id, public)
     
-    exchanged = False
     if game == 1:
-        await websocket.close(status.WS_1003_UNSUPPORTED_DATA, "Invalid game-type")
+        await websocket.close(status.WS_1008_POLICY_VIOLATION, "Invalid game-type")
     elif game == 2:
         await websocket.close(status.WS_1013_TRY_AGAIN_LATER, "Room is full")
     else:
+        exchanged = False
         player = game.join(websocket)
         await game.send_direct_message(websocket, {"you": player})
         try:
             while True:
-                coord = await game.recieve_text(websocket)
                 if game.started:
                     if not exchanged:
                        await game.exchange_names(player, nickname)
                        exchanged = True
-
+                    
+                    coord = await game.recieve_text(websocket)
                     if game.current_player == player:
+                        await asyncio.sleep(1)
                         x,y = map(int,coord.split(","))
                         winner = game.make_move(player, x, y)
                         if winner == 0:
@@ -109,7 +110,6 @@ async def join_room(websocket: WebSocket, game_type: str, nickname: str, room_id
                             await game.broadcast({"message": f"{player} won"})
                         else:
                             await game.broadcast({"message": "draw"})
-
                 await asyncio.sleep(1)
 
         except WebSocketDisconnect:

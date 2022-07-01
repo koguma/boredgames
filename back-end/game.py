@@ -1,19 +1,21 @@
 from fastapi import  WebSocket
+from random import choice
 
 class Game:
-    def __init__(self, room_id: str) -> None:
+    def __init__(self, room_id: str, num_of_players: int) -> None:
         self.connections = {}
         self.room_id = room_id
-        self.MAX_PLAYERS = 1
         self.started = False
+        self.unused_player_numbers = [i+1 for i in range(num_of_players)]
 
     def join(self, websocket: WebSocket) -> int:
         player = 0
         
         if not self.started:
-            player = self.connections[websocket] = len(self.connections) + 1
+            player = self.connections[websocket] = choice(self.unused_player_numbers)
+            self.unused_player_numbers.remove(player)
         
-            if len(self.connections) == self.MAX_PLAYERS:
+            if len(self.unused_player_numbers) == 0:
                 self.started = True
         
         return player
@@ -42,8 +44,7 @@ class Game:
 
 class Connect_4(Game):
     def __init__(self, room_id : str) -> None:
-        super().__init__(room_id)
-        self.MAX_PLAYERS = 2
+        super().__init__(room_id, 2)
         self.board = [[0]*6 for _ in range(7)]
         self.current_player = 1
         self.remaining_space = 6*7

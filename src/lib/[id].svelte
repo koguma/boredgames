@@ -150,7 +150,7 @@
         margin: 10%;
     }
 
-    .board::before {
+    .grid::before {
         content: '';
         height: 110%;
         width: 20px;
@@ -161,7 +161,7 @@
         left: 0;
         display: block;
     }
-    .board::after {
+    .grid::after {
         content: '';
         height: 110%;
         width: 20px;

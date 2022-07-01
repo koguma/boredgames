@@ -1,46 +1,45 @@
 <svelte:head>
-	<title>Create a room | boredgames</title>
+	<title>Public room | boredgames</title>
 </svelte:head>
 
 <script lang="ts">
-    import {name} from '$lib/stores.js'
-    import {goto} from '$app/navigation'
+    import {name, joinedRoom} from '$lib/stores.js'
+    import GameSelection from '$lib/gameSelection.svelte'
+    import Connect4 from '$lib/connect4.svelte'
+    import Error from '$lib/error.svelte'
+    import { onMount } from 'svelte'
 
     let error = ""
+    let joining = false
+    
+    let nickname: HTMLElement
+    onMount(async() => {
+        nickname.focus()
+    })
 
-    async function createRoom() {
-        const res = await fetch('http://127.0.0.1:8000/join/', {
-            method: 'POST',
-            headers: {
-            'Accept': 'application/json',
-            'Content-Type': 'application/json'
-            },
-            body: JSON.stringify({
-                type: "connect-4",
-            })
-        })
-        const content = await res
-        const contentJson = await content.json()
-        if (res.status == 201) {
-            goto(contentJson)
-        } else {
-            error = contentJson.detail
+    let socket : WebSocket
+    async function findRoom() {
+        if ($name == "") {
+            error = "nickname must be filled"
             setTimeout(() => {
                 error = ""
-            }, 3500)
+            }, 3000)
+            return
         }
+        joining = true
+        socket = new WebSocket(`ws://localhost:8000/ws/connect-4?nickname=${$name}`)
+        
+        socket.addEventListener("close", () => {
+            $joinedRoom = false
+            joining = false
+        })
     }
+    
 </script>
 
 <div class="home">
-    {#if error != ""}
-    <div class="alert alert-error shadow-lg absolute mt-12 w-1/2 left-1/4">
-        <div>
-            <svg xmlns="http://www.w3.org/2000/svg" class="stroke-current flex-shrink-0 h-6 w-6" fill="none" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 14l2-2m0 0l2-2m-2 2l-2-2m2 2l2 2m7-2a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
-            <span>Error! {error}</span>
-            </div>
-        </div>
-    {/if}
+    {#if !$joinedRoom}
+    <Error error={error}></Error>
 	<div class="hero min-h-screen bg-base-200">
 		<div class="hero-content text-center">
             <div class="indicator">
@@ -52,43 +51,22 @@
                     </a>
                 </div> 
                 <div class="card w-full max-w-md shadow-2xl bg-base-100">
-                    <div class="card-body">
+                    <div class="card-body w-full">
                         <!-- svelte-ignore a11y-label-has-associated-control -->
                         <label class="label md:hidden">
                             <span class="label-text">Game</span>
                         </label>
-                        <div class="grid card-wrapper sm:grid-cols-1 md:grid-cols-2">
-                            <div class="games">
-                                <div class="flex flex-col justify-center h-full">
-                                    <div class="form-control">
-                                        <label class="label cursor-pointer justify-start">
-                                            <input type="radio" name="radio-game" class="radio checked:bg-primary mr-3" checked />
-                                            <span class="label-text">Connect-4</span> 
-                                        </label>
-                                    </div>
-                                    <div class="form-control">
-                                        <label class="label cursor-pointer justify-start">
-                                            <input type="radio" name="radio-game" class="radio checked:bg-blue-500 mr-3" disabled/>
-                                            <span class="label-text">Chess</span> 
-                                        </label>
-                                    </div>
-                                    <div class="form-control">
-                                        <label class="label cursor-pointer justify-start">
-                                            <input type="radio" name="radio-game" class="radio checked:bg-blue-500 mr-3" disabled/>
-                                            <span class="label-text">Checkers</span> 
-                                        </label>
-                                    </div>
-                                </div>
-                            </div>
+                        <div class="grid sm:grid-cols-1 md:grid-cols-2">
+                            <GameSelection></GameSelection>
                             <div class="options">
                                 <div class="form-control">
                                     <label class="label" for="nickname">
                                         <span class="label-text">Nickname</span>
                                     </label>
-                                    <input id="nickname" type="text" placeholder="" bind:value = {$name} class="input input-bordered" required/>
+                                    <input bind:this={nickname} id="nickname" type="text" placeholder="" bind:value = {$name} class="input input-bordered" required/>
                                 </div>
-                                <div class="form-control mt-6" on:click={createRoom}>
-                                    <button class="btn btn-primary">Join</button>
+                                <div class="form-control mt-6" on:click={findRoom}>
+                                    <button class="btn btn-primary">{#if joining}Joining...{:else}Join{/if}</button>
                                 </div>
                             </div>
                         </div>
@@ -97,13 +75,8 @@
             </div>
         </div>
 	</div>
+    {/if}
+    {#if joining}
+        <Connect4 socket={socket}></Connect4>
+    {/if}
 </div>
-
-<style>
-    .games {
-        box-sizing: border-box;
-    }
-    .card-wrapper {
-        grid-auto-rows: 1fr auto;
-    }
-</style>

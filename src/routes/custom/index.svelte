@@ -1,52 +1,67 @@
 <svelte:head>
-	<title>Create a room | boredgames</title>
+	<title>Private room | boredgames</title>
 </svelte:head>
 
 <script lang="ts">
-    import {name} from '$lib/stores.js'
-    import {goto} from '$app/navigation'
+    import {roomId, name, joinedRoom} from '$lib/stores.js'
+    import Error from '$lib/error.svelte'
+    import GameSelection from '$lib/gameSelection.svelte'
+    import Connect4 from '$lib/connect4.svelte'
     import { page } from '$app/stores'
-    import { onMount } from 'svelte';
+    import { onMount } from 'svelte'
+    import { goto } from '$app/navigation'
 
-    let roomId = ($page.url.search == "") ? "" : $page.url.search.slice(1)
+    let nickname : HTMLElement
 
-    let error = ""
-    let matching = false
-    let url = ""
-
-    async function createRoom() {
-        if (roomId == "" || $name == "") {
-            error = "room id and nickname needs to be filled"
-            setTimeout(() => {
-                error = ""
-            }, 3500)
-            return
-        }
-        matching = true
-        url = $page.url.host + "/custom?" + roomId
-        const res = await fetch('http://127.0.0.1:8000/create/', {
-            method: 'POST',
-            headers: {
-            'Accept': 'application/json',
-            'Content-Type': 'application/json'
-            },
-            body: JSON.stringify({
-                type: "connect-4",
-                room_id: roomId
-            })
-        })
-        const content = await res
-        const contentJson = await content.json()
-        matching = true
-        if (res.status == 201) {
-            goto(contentJson)
+    onMount(async() => {
+        if ($page.url.searchParams.get("room_id") != null) {
+            $roomId = $page.url.searchParams.get("room_id") || ""
+            goto("/custom", { replaceState: true })
         } else {
-            error = contentJson.detail
+            nickname.focus()
+        }
+    })
+    
+    let error = ""
+    let joining = false
+    let url = ""
+    let socket : WebSocket
+
+    async function joinRoom() {
+        if (!joining) {
+            if ($roomId == "" || $name == "") {
+                error = "room id and nickname must be filled"
+                setTimeout(() => {
+                    error = ""
+                }, 3000)
+                return
+            }
+            else if (!$roomId.match(/^[a-z0-9]+$/i)) {
+                error = "room id can only contain alphabets and numbers"
+                setTimeout(() => {
+                    error = ""
+                }, 3000)
+                return
+            }
+            joining = true
             setTimeout(() => {
-                error = ""
-            }, 3500)
+                url = `${$page.url.href}?room_id=${$roomId}`
+            }, 1000)
+            
+            socket = new WebSocket(`ws://localhost:8000/ws/connect-4?nickname=${$name}&room_id=${$roomId}`)
+            
+            socket.addEventListener("close", (event) => {
+                $joinedRoom = false
+                joining = false
+                url = ""
+                console.log(event)
+            })
+        } else {
+            socket.close(1000,"change of mind")
         }
     }
+
+    let cancelRoom = false
 
     function copy() {
         let dummy = document.createElement("textarea");
@@ -59,14 +74,8 @@
 </script>
 
 <div class="home">
-    {#if error != ""}
-    <div class="alert alert-error shadow-lg absolute mt-12 w-1/2 left-1/4">
-        <div>
-            <svg xmlns="http://www.w3.org/2000/svg" class="stroke-current flex-shrink-0 h-6 w-6" fill="none" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 14l2-2m0 0l2-2m-2 2l-2-2m2 2l2 2m7-2a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
-            <span>Error! {error}</span>
-            </div>
-        </div>
-    {/if}
+    {#if !$joinedRoom}
+    <Error error={error}></Error>
 	<div class="hero min-h-screen bg-base-200">
 		<div class="hero-content text-center">
             <div class="indicator">
@@ -83,55 +92,40 @@
                         <label class="label md:hidden">
                             <span class="label-text">Game</span>
                         </label>
-                        <div class="grid card-wrapper sm:grid-cols-1 md:grid-cols-2">
-                            <div class="games">
-                                <div class="flex flex-col justify-center h-full">
-                                    <div class="form-control">
-                                        <label class="label cursor-pointer justify-start">
-                                            <input type="radio" name="radio-game" class="radio checked:bg-primary mr-3" checked />
-                                            <span class="label-text">Connect-4</span> 
-                                        </label>
-                                    </div>
-                                    <div class="form-control">
-                                        <label class="label cursor-pointer justify-start">
-                                            <input type="radio" name="radio-game" class="radio checked:bg-blue-500 mr-3" disabled/>
-                                            <span class="label-text">Chess</span> 
-                                        </label>
-                                    </div>
-                                    <div class="form-control">
-                                        <label class="label cursor-pointer justify-start">
-                                            <input type="radio" name="radio-game" class="radio checked:bg-blue-500 mr-3" disabled/>
-                                            <span class="label-text">Checkers</span> 
-                                        </label>
-                                    </div>
-                                </div>
-                            </div>
+                        <div class="grid sm:grid-cols-1 md:grid-cols-2">
+                            <GameSelection></GameSelection>
                             <div class="options">
                                 <div class="form-control">
                                     <label class="label" for="nickname">
                                         <span class="label-text">Nickname</span>
                                     </label>
-                                    <input id="nickname" type="text" placeholder="" bind:value = {$name} class="input input-bordered" required/>
-                                </div>
-                                <div class="form-control">
+                                    <input bind:this={nickname} id="nickname" type="text" placeholder="" bind:value = {$name} class="input input-bordered" required/>
                                     <label class="label" for="room-id">
                                         <span class="label-text">Room ID</span>
                                     </label>
-                                    <input id="room-id" bind:value={roomId} type="text" placeholder="" class="input input-bordered" required/>
+                                    <input id="room-id" bind:value={$roomId} type="text" placeholder="" class="input input-bordered" required/>
                                     <!-- svelte-ignore a11y-label-has-associated-control -->
                                     <label class="label">
                                         <span class="label-text-alt text-left">other players can join using the same room id</span>
                                     </label>
                                 </div>
-                                <div class="form-control mt-3" on:click={createRoom}>
-                                    <button class="btn btn-primary">{#if matching}Matching...{:else}Join{/if}</button>
+                                <div class="form-control mt-3" on:click={joinRoom} on:mouseover={() => cancelRoom = true} on:mouseleave={() => cancelRoom = joining && false} on:focus={() => cancelRoom = true} on:blur={() => cancelRoom = false}>
+                                    <button class="btn btn-primary">
+                                        {#if joining && cancelRoom}
+                                        Cancel
+                                        {:else if joining}
+                                        Joining...
+                                        {:else}
+                                        Join
+                                        {/if}
+                                    </button>
                                 </div>
                             </div>
                         </div>
-                        {#if matching}
-                            <button class="btn btn-outline btn-info flex justify-around mt-5" on:click={copy}>
-                                <span class="truncate">url: {url}</span>
-                                <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="feather feather-clipboard"><path d="M16 4h2a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h2"></path><rect x="8" y="2" width="8" height="4" rx="1" ry="1"></rect></svg>
+                        {#if url != ""}
+                            <button class="btn btn-outline btn-info mt-5 gap-2" on:click={copy}>
+                                <span class="truncate w-3/5">{url}</span>
+                                <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="h-6 w-6"><path d="M16 4h2a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h2"></path><rect x="8" y="2" width="8" height="4" rx="1" ry="1"></rect></svg>
                             </button>
                         {/if}
                     </div>
@@ -139,13 +133,8 @@
             </div>
         </div>
 	</div>
+    {/if}
+    {#if joining}
+        <Connect4 socket={socket}></Connect4>
+    {/if}
 </div>
-
-<style>
-    .games {
-        box-sizing: border-box;
-    }
-    .card-wrapper {
-        grid-auto-rows: 1fr auto;
-    }
-</style>
