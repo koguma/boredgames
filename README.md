@@ -4,7 +4,7 @@ Back-end written in Python + FastAPI, Front-end in Svelte
 
 Demo will be available soonTM
 
-Play a wide variety of games, be it : chess, checkers, etc... with your friends, bots, or anyone online!
+Play a wide variety of games, be it : connect4, chess, checkers, etc... with your friends, bots, or anyone online!
 
 ## Developing
 
