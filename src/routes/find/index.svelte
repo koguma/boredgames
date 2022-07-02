@@ -11,6 +11,7 @@
 
     let error = ""
     let joining = false
+    let cancelRoom = false
     
     let nickname: HTMLElement
     onMount(async() => {
@@ -18,21 +19,26 @@
     })
 
     let socket : WebSocket
-    async function findRoom() {
-        if ($name == "") {
-            error = "nickname must be filled"
-            setTimeout(() => {
-                error = ""
-            }, 3000)
-            return
+    async function joinRoom() {
+        if (!joining) {
+            if ($name == "") {
+                error = "nickname must be filled"
+                setTimeout(() => {
+                    error = ""
+                }, 3000)
+                return
+            }
+            joining = true
+            socket = new WebSocket(`ws://localhost:8000/ws/connect-4?nickname=${$name}`)
+            
+            socket.addEventListener("close", () => {
+                $joinedRoom = false
+                joining = false
+            })
         }
-        joining = true
-        socket = new WebSocket(`ws://localhost:8000/ws/connect-4?nickname=${$name}`)
-        
-        socket.addEventListener("close", () => {
-            $joinedRoom = false
-            joining = false
-        })
+        else if (socket.readyState == 1) {
+            socket.close(1000,"change of mind")
+        }
     }
     
 </script>
@@ -40,7 +46,7 @@
 <div class="home">
     {#if !$joinedRoom}
     <Error error={error}></Error>
-	<div class="hero min-h-screen bg-base-200">
+	<div class="hero min-h-screen bg-base-200 w-screen">
 		<div class="hero-content text-center">
             <div class="indicator">
                 <div class="indicator-item indicator-top indicator-start">
@@ -50,7 +56,7 @@
                         </button>
                     </a>
                 </div> 
-                <div class="card w-full max-w-md shadow-2xl bg-base-100">
+                <div class="card bg-base-100">
                     <div class="card-body w-full">
                         <!-- svelte-ignore a11y-label-has-associated-control -->
                         <label class="label md:hidden">
@@ -65,8 +71,16 @@
                                     </label>
                                     <input bind:this={nickname} id="nickname" type="text" placeholder="" bind:value = {$name} class="input input-bordered" required/>
                                 </div>
-                                <div class="form-control mt-6" on:click={findRoom}>
-                                    <button class="btn btn-primary">{#if joining}Joining...{:else}Join{/if}</button>
+                                <div class="form-control mt-3" on:click={joinRoom} on:mouseover={() => cancelRoom = true} on:mouseleave={() => cancelRoom = joining && false} on:focus={() => cancelRoom = true} on:blur={() => cancelRoom = false}>
+                                    <button class="btn btn-primary">
+                                        {#if joining && cancelRoom}
+                                        Cancel
+                                        {:else if joining}
+                                        Joining...
+                                        {:else}
+                                        Join
+                                        {/if}
+                                    </button>
                                 </div>
                             </div>
                         </div>

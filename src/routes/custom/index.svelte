@@ -26,6 +26,7 @@
     let joining = false
     let url = ""
     let socket : WebSocket
+    let cancelRoom = false
 
     async function joinRoom() {
         if (!joining) {
@@ -44,9 +45,7 @@
                 return
             }
             joining = true
-            setTimeout(() => {
-                url = `${$page.url.href}?room_id=${$roomId}`
-            }, 1000)
+            url = `${$page.url.href}?room_id=${$roomId}`
             
             socket = new WebSocket(`ws://localhost:8000/ws/connect-4?nickname=${$name}&room_id=${$roomId}`)
             
@@ -56,12 +55,10 @@
                 url = ""
                 console.log(event)
             })
-        } else {
+        } else if (socket.readyState == 1) {
             socket.close(1000,"change of mind")
         }
     }
-
-    let cancelRoom = false
 
     function copy() {
         let dummy = document.createElement("textarea");
@@ -76,7 +73,7 @@
 <div class="home">
     {#if !$joinedRoom}
     <Error error={error}></Error>
-	<div class="hero min-h-screen bg-base-200">
+	<div class="hero min-h-screen bg-base-200 w-screen">
 		<div class="hero-content text-center">
             <div class="indicator">
                 <div class="indicator-item indicator-top indicator-start">
@@ -86,8 +83,8 @@
                         </button>
                     </a>
                 </div> 
-                <div class="card w-full max-w-md shadow-2xl bg-base-100">
-                    <div class="card-body">
+                <div class="card">
+                    <div class="card-body w-full">
                         <!-- svelte-ignore a11y-label-has-associated-control -->
                         <label class="label md:hidden">
                             <span class="label-text">Game</span>

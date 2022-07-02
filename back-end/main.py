@@ -1,9 +1,8 @@
-from fastapi import FastAPI, WebSocketDisconnect, status, HTTPException, WebSocket
+from fastapi import FastAPI, WebSocketDisconnect, status, WebSocket
 from game import Game, Connect_4
 from typing import Union
 from pydantic import BaseModel
 from fastapi.middleware.cors import CORSMiddleware
-import asyncio
 
 class Room(BaseModel):
     type: str
@@ -87,33 +86,53 @@ async def join_room(websocket: WebSocket, game_type: str, nickname: str, room_id
     else:
         exchanged = False
         player = game.join(websocket)
-        await game.send_direct_message(websocket, {"you": player})
+        await game.send(websocket, {
+            "event": "connected",
+            "you": player
+        })
         try:
             while True:
-                if game.started:
-                    if not exchanged:
-                       await game.exchange_names(player, nickname)
-                       exchanged = True
-                    
-                    coord = await game.recieve_text(websocket)
-                    if game.current_player == player:
-                        await asyncio.sleep(1)
-                        x,y = map(int,coord.split(","))
-                        winner = game.make_move(player, x, y)
-                        if winner == 0:
+                if not exchanged and game.started:
+                    await game.exchange_names(websocket, nickname)
+                    exchanged = True
+
+                received = await websocket.receive_json()
+                
+                if received["event"] == "move":
+                    try:
+                        column = received["column"]
+                        winner, coords = game.make_move(player, column)
+                        
+                        await game.broadcast({
+                            "event": "move",
+                            "x": coords[0],
+                            "y": coords[1],
+                            "player": player
+                        })
+
+                        if winner == 3:
                             await game.broadcast({
-                                "x": x,
-                                "y": y,
-                                "player": player
+                                "event": "end",
+                                "message": "draw"
                             })
                         elif winner == 1 or winner == 2:
-                            await game.broadcast({"message": f"{player} won"})
-                        else:
-                            await game.broadcast({"message": "draw"})
-                await asyncio.sleep(1)
+                            await game.broadcast({
+                                "event": "end",
+                                "message": f"{winner} won"
+                            })
+                    except RuntimeError as e:
+                        await game.send(websocket, {
+                            "event": "error",
+                            "message": str(e)
+                        })
 
         except WebSocketDisconnect:
-            game.remove_connection(websocket)
-            await game.broadcast({"message": f"{player} disconnected"})
+            game.remove(websocket, player)
+            
+            await game.broadcast({
+                "event": "end",
+                "message": f"{player} disconnected"
+            })
+
             if len(game.connections) == 0:
                 sentinel.remove_room(game_type, game, public)

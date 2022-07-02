@@ -16,49 +16,44 @@
         board.push(row)
     }
 
-    let selected = -1
+    let selected_column = -1
     let positions : number[][] = []
     let player : number
     let opponent : string
-    let turn = 1
 
     onMount(async() => {
         socket.addEventListener("message", (event) => {
-            let recieved = JSON.parse(event.data)
-            console.log(recieved)
-            if ("x" in recieved && "y" in recieved) {
-                board[recieved["x"]][recieved["y"]] = recieved["player"]
-                if (recieved["player"] == 1) {
-                    turn = 2
-                } else {
-                    turn = 1
-                }
-            } else if(!("message" in recieved)) {
-                if ("you" in recieved) {
-                    player = recieved["you"]
-                } else {
-                    opponent = recieved["opponent"]
-                    $joinedRoom = true
-                }
-            } else {
-                console.log(recieved["message"])
-                socket.close(1000,"game end")
+            let received = JSON.parse(event.data)
+            if (received.event == "move") {
+                board[received.x][received.y] = received.player
+            }
+            else if (received.event == "error") {
+                console.log(received.message)
+            }
+            else if (received.event == "end") {
+                console.log(received.message)
+                socket.close(1000, "game over")
+            }
+            else if (received.event == "connected") {
+                player = received["you"]
+                console.log(received["you"])
+            }
+            else if (received.event == "started") {
+                opponent = received["opponent"]
+                $joinedRoom = true
+                // socket.send(JSON.stringify({
+                //     "event": "ok"
+                // }))
             }
         } )
     })
 
     function handleClick() {
-        if (selected != -1) {
-            for (let i = board.length-1; i >= 0; i--) {
-                if (board[selected][i] == 0) {
-                    if (socket.readyState <= 1 && turn == player) {
-                        socket.send(`${selected},${i}`)
-                        turn = 0
-                        
-                        return
-                    }
-                }
-            }
+        if (selected_column != -1 && socket.readyState == 1) {
+            socket.send(JSON.stringify({
+                "event": "move",
+                "column": selected_column
+            }))
         }
     }
 
@@ -67,11 +62,11 @@
         let mouse_x = event.clientX
         for (let i = 0; i < positions.length; i++) {
             if (mouse_x > positions[i][0] && mouse_x <= positions[i][1]) {
-                selected = i
+                selected_column = i
                 return
             }
         }
-        selected = -1
+        selected_column = -1
     }
 
     function updateCollection() {
@@ -93,7 +88,7 @@
             {#each board as column, i}
                 <div class="grid grid-rows-6">
                     {#each column as square, j}
-                        <div class="square w-20 h-20 relative" class:columnIdentifier={j == 0} class:columnIdentifierSelected={j == 0 && i == selected} class:redBefore={player == 1} class:yellowBefore={player == 2}>
+                        <div class="square w-10 h-10 sm:h-12 sm:w-12 md:h-20 md:w-20 relative" class:columnIdentifier={j == 0} class:columnIdentifierSelected={j == 0 && i == selected_column} class:redBefore={player == 1} class:yellowBefore={player == 2}>
                             <div class="rounded-full bg-primary-content circle" class:red={square == 1} class:yellow={square == 2}></div>
                         </div>
                     {/each}
