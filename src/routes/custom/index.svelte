@@ -83,7 +83,7 @@
                         </button>
                     </a>
                 </div> 
-                <div class="card">
+                <div class="card bg-base-100">
                     <div class="card-body w-full">
                         <!-- svelte-ignore a11y-label-has-associated-control -->
                         <label class="label md:hidden">

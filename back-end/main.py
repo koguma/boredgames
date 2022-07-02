@@ -1,3 +1,4 @@
+import json
 from fastapi import FastAPI, WebSocketDisconnect, status, WebSocket
 from game import Game, Connect_4
 from typing import Union
@@ -62,6 +63,7 @@ origins = [
     "http://localhost"
 ]
 
+
 app = FastAPI()
 
 app.add_middleware(
@@ -72,8 +74,14 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
+total_online = 0
+@app.get("/statistics")
+async def get_statistics():
+    return json.dumps({"total": total_online})
+
 @app.websocket("/ws/{game_type}")
 async def join_room(websocket: WebSocket, game_type: str, nickname: str, room_id: str = ""):
+    global total_online
     await websocket.accept()
 
     public = room_id == ""
@@ -91,6 +99,7 @@ async def join_room(websocket: WebSocket, game_type: str, nickname: str, room_id
             "you": player
         })
         try:
+            total_online += 1
             while True:
                 if not exchanged and game.started:
                     await game.exchange_names(websocket, nickname)
@@ -110,29 +119,31 @@ async def join_room(websocket: WebSocket, game_type: str, nickname: str, room_id
                             "player": player
                         })
 
-                        if winner == 3:
+                        if winner != 0:
                             await game.broadcast({
                                 "event": "end",
-                                "message": "draw"
-                            })
-                        elif winner == 1 or winner == 2:
-                            await game.broadcast({
-                                "event": "end",
-                                "message": f"{winner} won"
+                                "player": winner
                             })
                     except RuntimeError as e:
                         await game.send(websocket, {
                             "event": "error",
                             "message": str(e)
                         })
-
+                elif received["event"] == "rematch":
+                    success = game.reset_board(player)
+                    if success:
+                        await game.broadcast({
+                            "event": "rematch",
+                            "player": game.current_player
+                        })
         except WebSocketDisconnect:
+            total_online -= 1
             game.remove(websocket, player)
             
             await game.broadcast({
-                "event": "end",
-                "message": f"{player} disconnected"
+                "event": "disconnected",
+                "message": f"{nickname} disconnected"
             })
-
+            
             if len(game.connections) == 0:
                 sentinel.remove_room(game_type, game, public)

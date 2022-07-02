@@ -1,7 +1,7 @@
 import json
 from typing import Dict, Tuple
 from fastapi import  WebSocket
-from random import shuffle
+from random import shuffle, choice
 
 class Game:
     def __init__(self, room_id: str, num_of_players: int) -> None:
@@ -49,6 +49,16 @@ class Connect_4(Game):
         super().__init__(room_id, 2)
         self.board = [[0]*6 for _ in range(7)]
         self.current_player = 1
+        self.vote_reset = set()
+
+    def reset_board(self, player: int) -> bool:
+        self.vote_reset.add(player)
+        if self.vote_reset == 2:
+            self.board = [[0]*6 for _ in range(7)]
+            self.current_player = choice([1,2])
+            self.vote_reset = set()
+            return True
+        return False
 
     def make_move(self, player: int, column: int) -> Tuple[int, Tuple[int,int]]:
         winner = 0
