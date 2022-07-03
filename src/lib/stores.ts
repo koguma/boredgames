@@ -5,3 +5,5 @@ export const roomId = writable("")
 export const name = writable("")
 
 export const joinedRoom = writable(false)
+
+export const error = writable("")

@@ -106,17 +106,16 @@ async def join_room(websocket: WebSocket, game_type: str, nickname: str, room_id
                     exchanged = True
 
                 received = await websocket.receive_json()
-                
-                if received["event"] == "move":
+                if received["event"] == "move" and not game.is_over:
                     try:
                         column = received["column"]
                         winner, coords = game.make_move(player, column)
-                        
                         await game.broadcast({
                             "event": "move",
                             "x": coords[0],
                             "y": coords[1],
-                            "player": player
+                            "player": player,
+                            "next": game.current_player
                         })
 
                         if winner != 0:
@@ -129,7 +128,7 @@ async def join_room(websocket: WebSocket, game_type: str, nickname: str, room_id
                             "event": "error",
                             "message": str(e)
                         })
-                elif received["event"] == "rematch":
+                elif received["event"] == "rematch" and game.is_over:
                     success = game.reset_board(player)
                     if success:
                         await game.broadcast({
@@ -142,7 +141,7 @@ async def join_room(websocket: WebSocket, game_type: str, nickname: str, room_id
             
             await game.broadcast({
                 "event": "disconnected",
-                "message": f"{nickname} disconnected"
+                "message": f"{nickname} (opponent) disconnected"
             })
             
             if len(game.connections) == 0:

@@ -50,13 +50,15 @@ class Connect_4(Game):
         self.board = [[0]*6 for _ in range(7)]
         self.current_player = 1
         self.vote_reset = set()
+        self.is_over = False
 
     def reset_board(self, player: int) -> bool:
         self.vote_reset.add(player)
-        if self.vote_reset == 2:
+        if len(self.vote_reset) == 2:
             self.board = [[0]*6 for _ in range(7)]
             self.current_player = choice([1,2])
             self.vote_reset = set()
+            self.is_over = False
             return True
         return False
 
@@ -80,8 +82,10 @@ class Connect_4(Game):
         
         if self.is_vertical_win(coords) or self.is_horizontal_win(coords) or self.is_diagonal_win(coords):
             winner = self.current_player
+            self.is_over = True
         elif self.board_is_full():
             winner = 3
+            self.is_over = True
         
         self.next_turn()
 

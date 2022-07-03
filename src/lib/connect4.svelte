@@ -1,6 +1,6 @@
 <script lang="ts">
-    import { onMount } from 'svelte';
-    import {name, joinedRoom} from '$lib/stores.js'
+    import { onDestroy, onMount } from 'svelte';
+    import {name, joinedRoom, error} from '$lib/stores.js'
 
     export let socket : WebSocket
 
@@ -11,11 +11,15 @@
     let player : number
     let opponent : string
     let gameOver = false
-    let winner: number
     let rematching = false
+    let nextPlayer = 1
 
     function createBoard() {
-        board = new Array(7).fill(new Array(6).fill(0))
+        board = new Array(7)
+        for (let i = 0; i < board.length; i++) {
+            board[i] = (new Array(6).fill(0))
+        }
+        console.log(board)
     }
 
     onMount(async() => {
@@ -24,21 +28,27 @@
             let received = JSON.parse(event.data)
             if (received.event == "move") {
                 board[received.x][received.y] = received.player
+                nextPlayer = received.next
             }
             else if (received.event == "error") {
-                console.log(received.message)
+                $error = received.message
+                setTimeout(() => {
+                    $error = ""
+                }, 2000)
             }
             else if (received.event == "end") {
+                nextPlayer = received.player
                 gameOver = true
-                winner = received.winner
             }
             else if (received.event == "disconnected") {
-                console.log(received.event.message)
-                leaveRoom()
+                $error = received.message
+                setTimeout(() => {
+                    $error = ""
+                    leaveRoom()
+                }, 2000)
             }
             else if (received.event == "connected") {
                 player = received["you"]
-                console.log(received["you"])
             }
             else if (received.event == "started") {
                 opponent = received["opponent"]
@@ -48,8 +58,13 @@
                 createBoard()
                 gameOver = false
                 rematching = false
+                nextPlayer = received.player
             }
         } )
+    })
+
+    onDestroy(async() => {
+        leaveRoom()
     })
 
     function handleClick() {
@@ -59,6 +74,7 @@
                 "column": selectedColumn
             }))
         }
+        selectedColumn = -1
     }
 
     function handleMouseMove(event : MouseEvent) {
@@ -85,14 +101,15 @@
     function displayResult() {
         let result = ""
         if (gameOver) {
-            if (winner == 3) {
+            if (nextPlayer == 3) {
                 result = "Draw!"
             }
-            else if (winner == player) {
-                result = `You won!`
+            else if (nextPlayer == player) {
+                result = "You won!"
             }
             else {
-                result = `You lost!`
+                console.log(nextPlayer)
+                result = "You lost!"
             }
         }
         return result
@@ -114,25 +131,34 @@
 
 {#if $joinedRoom}
     {#if gameOver}
-    <div class="card bg-neutral text-neutral-content">
-        <div class="card-body items-center text-center">
-            <h2 class="card-title">{displayResult}</h2>
-            <p>Request rematch?</p>
-            <div class="card-actions justify-end">
-                <button class="btn btn-primary w-1/5" on:click={voteRematch}>
-                    {#if rematching}
-                        Waiting...
-                    {:else}
-                        Yes
-                    {/if}
-                </button>
-                <button class="btn btn-ghost w-1/5" on:click={leaveRoom}>No</button>
+    <div class="flex flex-col items-center justify-center absolute h-screen w-full bg-base-200 top-0 left-0 bg-opacity-50 z-50">
+        <div class="card bg-base-100 w-72">
+            <div class="card-body items-center text-center">
+                <h2 class="card-title">{displayResult()}</h2>
+                <p>Request rematch?</p>
+                <div class="card-actions justify-center">
+                    <button class="btn btn-primary w-30" on:click={voteRematch}>
+                        {#if rematching}
+                            Waiting...
+                        {:else}
+                            Yes
+                        {/if}
+                    </button>
+                    <button class="btn btn-ghost w-30" on:click={leaveRoom}>No</button>
+                </div>
             </div>
         </div>
     </div>
-    {:else}
-    <div class="game flex items-center justify-center h-screen" on:mousemove={handleMouseMove} on:click={handleClick}>
-        <span class="test">{opponent}</span>
+    {/if}
+    <div class="flex flex-col items-center justify-center h-screen w-full" on:mousemove={handleMouseMove} on:click={handleClick}>
+
+        <div class="mb-10 text-2xl">
+            {#if player == nextPlayer}
+            Your turn
+            {:else}
+            Opponent's turn
+            {/if}
+        </div>
         <div class="relative board grid grid-cols-7 bg-primary bg-primary py-3">
             {#each board as column, i}
                 <div class="grid grid-rows-6">
@@ -144,16 +170,15 @@
                 </div>
             {/each}
         </div>
+        <div class="w-full mt-6 flex justify-center items-center flex-col">
+                <div class="badge badge-primary py-3 px-3">{$name} (you): <span class="font-bold ml-1" class:red-text={player == 1} class:yellow-text={player != 1}>{player == 1 ? 'red' : 'yellow'}</span></div>
+                vs
+                <div class="badge badge-primary py-3 px-3">{opponent} (opponent): <span class="font-bold ml-1" class:red-text={player != 1} class:yellow-text={player == 1}>{player == 1 ? 'yellow' : 'red'}</span></div>
+        </div>
     </div>
-    {/if}
 {/if}
 
 <style>
-    .test {
-        position: absolute;
-        top: 0;
-        left: 0;
-    }
 
     .red {
         background-color: red;
@@ -161,6 +186,14 @@
 
     .yellow {
         background-color: yellow;
+    }
+
+    .red-text {
+        color: red;
+    }
+
+    .yellow-text {
+        color: yellow;
     }
 
     .redBefore.columnIdentifierSelected::before {
