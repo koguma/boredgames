@@ -2,7 +2,7 @@
 
 Back-end written in Python + FastAPI, Front-end in Svelte + Tailwind
 
-Play connect 4 or checkers with your friends or anyone online!
+Play connect 4, checkers, and battleship with your friends or anyone online!
 
 ## Developing
 
