@@ -1,10 +1,8 @@
 # boredgames - WIP
 
-Back-end written in Python + FastAPI, Front-end in Svelte
+Back-end written in Python + FastAPI, Front-end in Svelte + Tailwind
 
-Demo will be available soonTM
-
-Play a wide variety of games, be it : connect4, chess, checkers, etc... with your friends, bots, or anyone online!
+Play connect 4 or checkers with your friends or anyone online!
 
 ## Developing
 

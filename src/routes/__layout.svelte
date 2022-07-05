@@ -2,8 +2,8 @@
 	import '../app.css'
 	import {joinedRoom} from '$lib/stores'
 	import { onMount } from 'svelte';
+	
 	let now = new Date().getFullYear()
-
 	let dark : boolean
 	let darkFirst : boolean
 
@@ -30,7 +30,6 @@
 		}
 		switchMode()
 	}
-
 </script>
 
 <div class="navbar bg-base-100 absolute top-0">
@@ -42,8 +41,8 @@
 			</label>
 			<ul tabindex="0" class="menu menu-compact dropdown-content mt-3 p-2 shadow bg-base-100 rounded-box w-52">
 				<li><a href="/">Home</a></li>
-				<li><a href="/custom">Play vs Friends</a></li>
-				<li><a href="/find">Find Opponent</a></li>
+				<li><a href="/private">Play vs Friends</a></li>
+				<li><a href="/public">Find Opponent</a></li>
 			</ul>
 	  	</div>
 	</div>

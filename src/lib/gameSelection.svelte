@@ -8,20 +8,14 @@
         </div>
         <div class="form-control">
             <label class="label cursor-pointer justify-start">
-                <input type="radio" name="radio-game" class="radio checked:bg-primary mr-3" />
-                <span class="label-text">Tic-Tac-Toe</span> 
-            </label>
-        </div>
-        <div class="form-control">
-            <label class="label cursor-pointer justify-start">
-                <input type="radio" name="radio-game" class="radio checked:bg-blue-500 mr-3" disabled/>
-                <span class="label-text">Chess</span> 
-            </label>
-        </div>
-        <div class="form-control">
-            <label class="label cursor-pointer justify-start">
                 <input type="radio" name="radio-game" class="radio checked:bg-blue-500 mr-3" disabled/>
                 <span class="label-text">Checkers</span> 
+            </label>
+        </div>
+        <div class="form-control">
+            <label class="label cursor-pointer justify-start">
+                <input type="radio" name="radio-game" class="radio checked:bg-blue-500 mr-3" disabled/>
+                <span class="label-text">Battleship</span> 
             </label>
         </div>
     </div>
@@ -32,11 +26,9 @@
             <!-- svelte-ignore a11y-missing-attribute -->
             <li><a>Connect-4</a></li>
             <!-- svelte-ignore a11y-missing-attribute -->
-            <li><a>Tic-Tac-Toe</a></li>
-            <!-- svelte-ignore a11y-missing-attribute -->
-            <li><a>Chess</a></li>
-            <!-- svelte-ignore a11y-missing-attribute -->
             <li><a>Checkers</a></li>
+            <!-- svelte-ignore a11y-missing-attribute -->
+            <li><a>Battleship</a></li>
         </ul>
     </div>
 </div>

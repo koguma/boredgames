@@ -5,7 +5,6 @@
 <script lang="ts">
 	import { onMount } from "svelte";
 
-
 	let totalPlayers : number
 
 	onMount(async() => {
@@ -23,22 +22,23 @@
 		<div class="hero-content text-center">
 			<div class="max-w-md">
 				<h1 class="text-5xl font-bold">Bored Games</h1>
-				<div class="flex items-center flex-wrap justify-center py-3">
+				<div class="flex items-center flex-wrap justify-center pt-3">
 					<span class="hidden md:inline">Play</span>
 					<div class="wrapper h-4 overflow-hidden">
 						<span class="flex flex-col px-1 change">
-							<span class="text-secondary font-bold ">Connect-4</span>
-							<span class="text-secondary font-bold ">Tick-Tac-Toe</span>
-							<span class="text-secondary font-bold ">Chess</span>
+							<span class="text-secondary font-bold ">Connect 4</span>
+							<span class="text-secondary font-bold ">Checkers</span>
+							<span class="text-secondary font-bold ">Battleship</span>
 						</span>
 					</div>
-					with friends, bots, or anyone online!
+					with friends or anyone online...
 				</div>
-				<a href="/custom">
+				<p class="py-3">with <span class="font-bold">real-time communication</span> via built-in chat system!</p>
+				<a href="/private">
 					<button class="btn btn-primary w-3/4 sm:w-2/5">Play vs friends</button>
 				</a>
 				<span class="mx-5 my-4 block sm:my-0 sm:inline">or</span>
-				<a href="/find">
+				<a href="/public">
 					<button class="btn btn-primary w-3/4 sm:w-2/5">Find opponent</button>
 				</a>
 				<div class="flex w-full justify-center items-center mt-5">
