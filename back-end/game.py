@@ -44,9 +44,7 @@ class Game:
 
         player = 0
         
-        
         if not self.started:
-            
             # take a player number available, assign it, and then take note of it
             player = self.connections[websocket] = self.unused_player_numbers.pop()
             self.used_player_numbers.append(player)
@@ -120,7 +118,7 @@ class MultiPlayerBoardGame(Game):
         vote_reset: set that stores all players that voted to reset the board
     """
 
-    def __init__(self, room_id: str, row: int, col: int) -> None:
+    def __init__(self, room_id: str, players: int, row: int, col: int) -> None:
         """
         Constructor to instantiate an object of the class
 
@@ -130,7 +128,7 @@ class MultiPlayerBoardGame(Game):
             col: number of columns in the board
         """
 
-        super().__init__(room_id, 2) # call the superclass' constructor
+        super().__init__(room_id, players) # call the superclass' constructor
 
         self.dimensions = {
             "row": row,
@@ -148,7 +146,7 @@ class MultiPlayerBoardGame(Game):
             Create a fresh board initialised with 0's
         """
 
-        self.board = [[0]*self.dimension["row"] for _ in range(self.dimension["col"])]
+        self.board = [[0]*self.dimensions["row"] for _ in range(self.dimensions["col"])]
 
     def reset_board(self, player: int) -> None:
         """
