@@ -68,15 +68,16 @@ class Sentinel:
                 # search for the first private Game instance that matches the input room_id
                 chosen_room = next((room for room in self.private_rooms[game_type] if room.room_id == room_id), None)
 
-                assert chosen_room is None or not chosen_room.started
+                if chosen_room.started:
+                    # make sure the chosen instance is not started yet
+                    raise RuntimeError("Room ID is currently in use")
         
         except KeyError:
             # make sure it is a supported game
             raise RuntimeError("Invalid game-type")
-
-        except AssertionError:
-            # make sure the chosen instance is not started yet
-            raise RuntimeError("Room ID is currently in use")
+        
+        except AttributeError:
+            pass
 
         # create a new room if no available room found
         if chosen_room is None:
@@ -221,7 +222,7 @@ async def join_room(websocket: WebSocket, game_type: str, nickname: str, room_id
                 try:
                     sentinel.remove_room(game_type, game, is_public)
                 except RuntimeError:
-                    pass
+                    print("Error: Game does not exist")
 
 async def join_connect4(game: Connect4, websocket: WebSocket, nickname: str, player: int):
     """

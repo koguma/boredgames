@@ -1,10 +1,29 @@
-from game import MultiPlayerBoardGame
+from game import BoardGame
 from typing import Tuple
 
-class Connect4(MultiPlayerBoardGame):
+class Connect4(BoardGame):
     """
     Class for Connect4 logic
+
+    Attributes:
+        NORTH: relative coordinate to the adjacent square to the north
+        SOUTH: relative coordinate to the adjacent square to the south
+        WEST: relative coordinate to the adjacent square to the west
+        EAST: relative coordinate to the adjacent square to the east
+        NORTHWEST: relative coordinate to the adjacent square to the northwest
+        SOUTHWEST: relative coordinate to the adjacent square to the southwest
+        NORTHEAST: relative coordinate to the adjacent square to the northeast
+        SOUTHEAST: relative coordinate to the adjacent square to the southeast
     """
+
+    NORTH = (0,1)
+    SOUTH = (0,-1)
+    WEST = (-1,0)
+    EAST = (1,0)
+    NORTHWEST = (-1,1)
+    NORTHEAST = (1,1)
+    SOUTHEAST = (1,-1)
+    SOUTHWEST = (-1,-1)
 
     def __init__(self, room_id : str) -> None:
         """
@@ -38,7 +57,7 @@ class Connect4(MultiPlayerBoardGame):
         for i in reversed(range(self.dimensions["row"])):
             if self.board[column][i] == 0:
                 self.board[column][i] = self.current_player
-                coords = (column, i)
+                coordinates = (column, i)
                 break
         else:
             # check if no zero were found
@@ -47,7 +66,7 @@ class Connect4(MultiPlayerBoardGame):
         winner = 0
         
         # set the winner and is_over if the move played was a winning move
-        if self.is_vertical_win(coords) or self.is_horizontal_win(coords) or self.is_diagonal_win(coords):
+        if self.is_winning_move(coordinates):
             winner = self.current_player
             self.is_over = True
         
@@ -58,7 +77,7 @@ class Connect4(MultiPlayerBoardGame):
         
         self.next_turn() # change to next turn
 
-        return (winner, coords)
+        return (winner, coordinates)
 
     def next_turn(self) -> None:
         """
@@ -77,153 +96,53 @@ class Connect4(MultiPlayerBoardGame):
 
         return all(self.board[i][0] for i in range(self.dimensions["col"]))
 
-    def is_diagonal_win(self, coords: Tuple[int, int]) -> bool:
+    def is_winning_move(self, coords: Tuple[int, int]) -> bool:
         """
-        Check if the move at the coordinate has a diagonal win fgor the current player
+        Count all consecutive player numbers on a square that matches the current player
 
         Args:
-            coords: coordinate of the move that should be checked
+            coords: coordinate of the move that was made
 
         Returns:
-            True if the move was a diagonal win, False otherwise
+            True if it was a winning move, False otherwise
         """
 
-        x,y = coords # assign x and y from the tuple
+        x, y = coords
+        win = False
+        
+        # if there was >= 3 consecutive squares surrounding the coordinate, it is a win
+        if (self.count_consecutive(x,y, Connect4.SOUTH) + self.count_consecutive(x,y, Connect4.NORTH) >= 3
+            or self.count_consecutive(x,y, Connect4.WEST) + self.count_consecutive(x,y, Connect4.EAST) >= 3
+            or self.count_consecutive(x,y, Connect4.SOUTHWEST) + self.count_consecutive(x,y, Connect4.NORTHEAST) >= 3
+            or self.count_consecutive(x,y, Connect4.SOUTHEAST) + self.count_consecutive(x,y, Connect4.NORTHWEST) >= 3):
+            
+            win = True
+        
+        return win
 
-        # if there is 4 consecutive current player number with the check going like "/", then there is a win
-        count = 1 + self.diagonal_forward_count(x+1, y+1, True) + self.diagonal_forward_count(x-1, y-1, False)
-        if count >= 4: return True
-
-        # if there is 4 consecutive current player number with the check going like "/", then there is a win
-        count = 1 + self.diagonal_backward_count(x-1, y+1, True) + self.diagonal_backward_count(x+1, y-1, False)
-        return count >= 4
-
-    def is_vertical_win(self, coords: Tuple[int, int]) -> bool:
+    def count_consecutive(self, x: int, y: int, direction: Tuple[int,int]) -> int:
         """
-        Check if the move at the coordinate has a vertical win fgor the current player
-
-        Args:
-            coords: coordinate of the move that should be checked
-
-        Returns:
-            True if the move was a vertical win, False otherwise
-        """
-
-        x,y = coords # assign x and y from the tuple
-
-        # if there is 4 consecutive current player number with the check, then there is a win
-        count = 1 + self.vertical_count(x, y+1, True) + self.vertical_count(x, y-1, False)
-        return count >= 4
-
-    def is_horizontal_win(self, coords: Tuple[int, int]) -> bool:
-        """
-        Check if the move at the coordinate has a horizontal win fgor the current player
-
-        Args:
-            coords: coordinate of the move that should be checked
-
-        Returns:
-            True if the move was a horizontal win, False otherwise
-        """
-
-        x,y = coords # assign x and y from the tuple
-
-        # if there is 4 consecutive current player number with the check, then there is a win
-        count = 1 + self.horizontal_count(x-1, y, True) + self.horizontal_count(x+1, y, False)
-        return count >= 4
-
-    def diagonal_backward_count(self, x: int, y: int, up: bool) -> int:
-        """
-        Count all consecutive player numbers on a square diagonally like "\"
+        Count all consecutive player numbers on a square that matches the current player
 
         Args:
             x: the x position of the square on the board
             y: the y position of the square on the board
-            up: whether it should check up or down
+            direction: the square to which direction the function should check
 
         Returns:
-            count of all consecutive player numbers stemming from the first input
+            count of all consecutive player numbers stemming from the first call
         """
         
-        # return 0 if it is no longer the player number or out of index, otherwise, keep going up or down
+        # find the new x and y to the specified direction
+        new_x = x + direction[0]
+        new_y = y + direction[1]
+
+        # if it is a valid coordinate and the square is the same as current player number, then check further
         try:
-            if self.board[x][y] == self.current_player:
-                if up:
-                    return 1 + self.diagonal_backward_count(x-1,y+1,up)
-                else:
-                    return 1 + self.diagonal_backward_count(x+1,y-1,up)
+            if self.board[new_x][new_y] == self.current_player:
+                return 1 + self.count_consecutive(new_x,new_y,direction)
+
         except IndexError:
             pass
-        return 0
-
-    def diagonal_forward_count(self, x: int, y: int, up: bool) -> int:
-        """
-        Count all consecutive player numbers on a square diagonally like "/"
-
-        Args:
-            x: the x position of the square on the board
-            y: the y position of the square on the board
-            up: whether it should check up or down
-
-        Returns:
-            count of all consecutive player numbers stemming from the first input
-        """
-       
-        # return 0 if it is no longer the player number or out of index, otherwise, keep going up or down
-        try:
-            if self.board[x][y] == self.current_player:
-                if up:
-                    return 1 + self.diagonal_forward_count(x+1,y+1,up)
-                else:
-                    return 1 + self.diagonal_forward_count(x-1,y-1,up)
-        except IndexError:
-            pass
-        return 0
-
-    def vertical_count(self, x: int, y: int, up: bool) -> int:
-        """
-        Count all consecutive player numbers on a square vertically
-
-        Args:
-            x: the x position of the square on the board
-            y: the y position of the square on the board
-            up: whether it should check up or down
-
-        Returns:
-            count of all consecutive player numbers stemming from the first input
-        """
-
-        # return 0 if it is no longer the player number or out of index, otherwise, keep going up or down
-        try:
-            if self.board[x][y] == self.current_player:
-                if up:
-                    return 1 + self.vertical_count(x, y+1, up)
-                else:
-                    return 1 + self.vertical_count(x, y-1, up)
-        except IndexError:
-            pass
-        return 0
-
-    def horizontal_count(self, x: int, y: int, left: bool) -> int:
-        """
-        Count all consecutive player numbers on a square horizontally
-
-        Args:
-            x: the x position of the square on the board
-            y: the y position of the square on the board
-            left: whether it should check left or right
-
-        Returns:
-            count of all consecutive player numbers stemming from the first input
-        """
-
-        # return 0 if it is no longer the player number or out of index, otherwise, keep going left or right
-        try:
-            if self.board[x][y] == self.current_player:
-                if left:
-                    return 1 + self.horizontal_count(x-1, y, left)
-                else:
-                    return 1 + self.horizontal_count(x+1, y, left)
-        except IndexError:
-            pass
+        
         return 0

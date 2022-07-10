@@ -4,7 +4,7 @@ from random import shuffle, choice
 
 class Game:
     """
-    The base class used to create all games
+    The base class used to create all online games
 
     Attributes:
         connections: dictionary that maps connected websockets to their corresponding player number
@@ -107,9 +107,9 @@ class Game:
                     "opponent": nickname
                 })
 
-class MultiPlayerBoardGame(Game):
+class BoardGame(Game):
     """
-    Class used to create all multiplayer board games
+    Class used to create all board games
 
     Attributes:
         dimensions: dictionary that maps column and row to their respecting size
