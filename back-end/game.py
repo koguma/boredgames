@@ -7,7 +7,7 @@ class Game:
     The base class used to create all online games
 
     Attributes:
-        connections: dictionary that maps connected websockets to their corresponding player number
+        connections: dictionary that maps connected websockets to their corresponding player number and nickname
         room_id: ID of the created instance
         started: whether the game has started or not
         unused_player_numbers: stores the player numbers that are currently assignable
@@ -31,12 +31,13 @@ class Game:
 
         shuffle(self.unused_player_numbers) # randomise the order of player numbers 
 
-    def join(self, websocket: WebSocket) -> int:
+    async def join(self, websocket: WebSocket, nickname: str) -> int:
         """
         Connect the websocket to the game
 
         Args:
             websocket: instance of WebSocket to be joined
+            nickname: nickname of the player
 
         Returns:
             player number if successful, 0 otherwise
@@ -46,13 +47,28 @@ class Game:
         
         if not self.started:
             # take a player number available, assign it, and then take note of it
-            player = self.connections[websocket] = self.unused_player_numbers.pop()
+            self.connections[websocket] = (self.unused_player_numbers.pop(), nickname)
+            player = self.connections[websocket][0]
+
+            # notify the client of their player number
+            await self.send(websocket, {
+                "event": "connected",
+                "you": player
+            })
+
             self.used_player_numbers.append(player)
 
             # if there are no more player numbers available, start the game
             if len(self.unused_player_numbers) == 0:
                 self.started = True
-        
+
+                # notify all players the opponent details e.g. player number, nickname
+                if self.started:
+                    message = {"event": "started"}
+                    for key in self.connections:
+                        message[self.connections[key][0]] = self.connections[key][1]
+                    await self.broadcast(message)
+                    
         return player
 
     async def send(self, websocket: WebSocket, message: Dict[str, object]) -> None:
@@ -89,23 +105,6 @@ class Game:
         self.connections.pop(websocket)
         self.unused_player_numbers.append(player)
         self.used_player_numbers.remove(player)
-
-
-    async def exchange_names(self, player: int, nickname: str) -> None:
-        """
-        Send its nickname and player number to all other players
-
-        Args:
-            player: player number to be broadcasted
-            nickname: nickname to be broadcasted alongside the player number
-        """
-
-        for websocket in self.connections:
-            if self.connections[websocket] != player:
-                await self.send(websocket, {
-                    "event": "started",
-                    "opponent": nickname
-                })
 
 class BoardGame(Game):
     """

@@ -19,7 +19,6 @@
         for (let i = 0; i < board.length; i++) {
             board[i] = (new Array(6).fill(0))
         }
-        console.log(board)
     }
 
     onMount(async() => {
@@ -51,7 +50,8 @@
                 player = received["you"]
             }
             else if (received.event == "started") {
-                opponent = received["opponent"]
+                let otherPlayer = player == 1 ? 2 : 1
+                opponent = received[otherPlayer]
                 $joinedRoom = true
             }
             else if (received.event == "rematch") {
@@ -152,14 +152,14 @@
     {/if}
     <div class="flex flex-col items-center justify-center h-screen w-full" on:mousemove={handleMouseMove} on:click={handleClick}>
 
-        <div class="mb-10 text-2xl">
+        <div class="mb-10 text-2xl mt-5">
             {#if player == nextPlayer}
             Your turn
             {:else}
             Opponent's turn
             {/if}
         </div>
-        <div class="relative board grid grid-cols-7 bg-primary bg-primary py-3">
+        <div class="relative board grid grid-cols-7 bg-primary py-3">
             {#each board as column, i}
                 <div class="grid grid-rows-6">
                     {#each column as square, j}

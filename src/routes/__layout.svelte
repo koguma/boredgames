@@ -74,7 +74,7 @@
 <main>
 	<slot />
 </main>
-
+{#if !$joinedRoom}
 <footer class="footer px-10 py-3 md:py-6 border-t bg-base-200 text-base-content border-base-300 footer-center absolute bottom-0">
 	<div class="flex">
 	  	<p>&copy; {now} Bored Games by <a class="link link-hover" href="https://github.com/koguma" target="_blank">Koguma</a>. Open-source on </p>
@@ -82,6 +82,7 @@
 	</div>
 	<a class="text-xxs" href="https://www.flaticon.com/free-icons/board-game" title="board game icons">Board game icons created by Freepik - Flaticon</a>
 </footer>
+{/if}
 
 <style>
 	.text-xxs {

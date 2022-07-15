@@ -3,10 +3,11 @@
 </svelte:head>
 
 <script lang="ts">
-    import {name, joinedRoom, error} from '$lib/stores.js'
+    import {name, joinedRoom, error, gameType} from '$lib/stores.js'
     import GameSelection from '$lib/gameSelection.svelte'
     import Connect4 from '$lib/connect4.svelte'
     import Error from '$lib/error.svelte'
+    import Checkers from '$lib/checkers.svelte'
     import { onMount } from 'svelte'
 
     let joining = false
@@ -27,8 +28,16 @@
                 }, 2000)
                 return
             }
+            else if ($gameType == "") {
+                $error = "game type must be selected"
+                setTimeout(() => {
+                    $error = ""
+                }, 2000)
+                return
+            }
+
             joining = true
-            socket = new WebSocket(`ws://localhost:8000/ws/connect-4?nickname=${$name}`)
+            socket = new WebSocket(`ws://localhost:8000/ws/${$gameType}?nickname=${$name}`)
             
             socket.addEventListener("close", () => {
                 $joinedRoom = false
@@ -86,7 +95,9 @@
         </div>
     </div>
     {/if}
-    {#if joining}
+    {#if joining && $gameType == "connect-4"}
         <Connect4 socket={socket}></Connect4>
+    {:else if joining && $gameType == "checkers"}
+        <Checkers socket={socket}></Checkers>
     {/if}
 </div>

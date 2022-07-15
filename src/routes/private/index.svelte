@@ -3,10 +3,11 @@
 </svelte:head>
 
 <script lang="ts">
-    import {roomId, name, joinedRoom, error} from '$lib/stores.js'
+    import {roomId, name, joinedRoom, error, gameType} from '$lib/stores.js'
     import Error from '$lib/error.svelte'
     import GameSelection from '$lib/gameSelection.svelte'
     import Connect4 from '$lib/connect4.svelte'
+    import Checkers from '$lib/checkers.svelte'
     import { page } from '$app/stores'
     import { onMount } from 'svelte'
     import { goto } from '$app/navigation'
@@ -20,6 +21,7 @@
     onMount(async() => {
         if ($page.url.searchParams.get("room_id") != null) {
             $roomId = $page.url.searchParams.get("room_id") || ""
+            $gameType = $page.url.searchParams.get("game_type") || ""
             goto("/private", { replaceState: true })
         } else {
             nickname.focus()
@@ -42,11 +44,18 @@
                 }, 2000)
                 return
             }
+            else if ($gameType == "") {
+                $error = "game type must be selected"
+                setTimeout(() => {
+                    $error = ""
+                }, 2000)
+                return
+            }
+            
             joining = true
-            url = `${$page.url.href}?room_id=${$roomId}`
+            url = `${$page.url.href}?room_id=${$roomId}&game_type=${$gameType}`
             
-            socket = new WebSocket(`ws://localhost:8000/ws/connect-4?nickname=${$name}&room_id=${$roomId}`)
-            
+            socket = new WebSocket(`ws://localhost:8000/ws/${$gameType}?nickname=${$name}&room_id=${$roomId}`)
             socket.addEventListener("close", (event) => {
                 $joinedRoom = false
                 joining = false
@@ -125,7 +134,9 @@
         </div>
     </div>
     {/if}
-    {#if joining}
+    {#if joining && $gameType == "connect-4"}
         <Connect4 socket={socket}></Connect4>
+    {:else if joining && $gameType == "checkers"}
+        <Checkers socket={socket}></Checkers>
     {/if}
 </div>
