@@ -6,11 +6,16 @@ The goal is to create an open-source central hub where lots of board games can b
 
 Play connect 4, checkers, battleship, etc... with your friends, or anyone online!
 
-Fully functioning engine (with valid draw, win, lose, movement etc...) with support for private and public lobbies for:
-    connect 4
-    checkers
-    battleship (will be implemented someday)
-
+Fully functioning engine (with valid draw, win, lose, movement etc...) with support for private and public lobbies for:    
+        
+* connect 4    
+        
+* checkers    
+        
+* battleship (will be implemented someday)    
+    
+* and more
+    
 If you have any suggestions, feedbacks, or anything really, feel free to create an issue or contact me via email :)
 
 ## Developing
