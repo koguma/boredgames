@@ -6,8 +6,6 @@ The goal is to create an open-source central hub where lots of board games can b
 
 To reduce the waiting time, bots that are as smart as me will play the game if there aren't enough players
 
-Play connect 4, checkers, battleship, etc... with your friends, or anyone online!
-
 Fully functioning engine (with valid draw, win, lose, movement etc...) with support for private and public lobbies for:    
         
 * connect 4    
