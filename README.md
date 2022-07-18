@@ -2,7 +2,7 @@
 
 Back-end written in Python + FastAPI, Front-end in Svelte + Tailwind
 
-The goal is to create an open-source central hub where lots of board games can be played by anyone around the world
+The goal is to create an open-source central hub where lots of board games can be played by anyone around the world. To reduce the waiting time, bots that are as smart as me will play the game if there aren't enough players
 
 Play connect 4, checkers, battleship, etc... with your friends, or anyone online!
 
