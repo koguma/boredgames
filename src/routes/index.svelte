@@ -31,7 +31,7 @@
 							<span class="text-secondary font-bold ">Battleship</span>
 						</span>
 					</div>
-					with friends, bots, or anyone online!
+					with friends or anyone online!
 				</div>
 				<a href="/private">
 					<button class="btn btn-primary w-3/4 sm:w-2/5">Play vs friends</button>

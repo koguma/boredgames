@@ -1,11 +1,16 @@
 <script lang="ts">
 	import '../app.css'
-	import {joinedRoom} from '$lib/stores'
+	import {joinedRoom, playAudio} from '$lib/stores'
 	import { onMount } from 'svelte';
+	import { browser } from '$app/env';
 	
 	let now = new Date().getFullYear()
 	let dark : boolean
 	let darkFirst : boolean
+	let bgMusic : HTMLAudioElement
+	if (browser) {
+		bgMusic = new Audio('/thejazzpiano.mp3')
+	}
 
 	onMount(async() => {
 		switchMode()
@@ -29,6 +34,19 @@
 			localStorage.theme = 'dark'
 		}
 		switchMode()
+	}
+
+	function specifySound() {
+		$playAudio = !$playAudio
+		if (bgMusic != undefined) {
+			bgMusic.volume = 0.1
+			if ($playAudio) {
+				bgMusic.loop = true
+				bgMusic.play()
+			} else {
+				bgMusic.pause()
+			}
+		}
 	}
 </script>
 
@@ -56,6 +74,19 @@
 		</a>
 	</div>
 	<div class="navbar-end">
+		<label class="btn btn-ghost btn-circle swap">
+  
+			<!-- this hidden checkbox controls the state -->
+			<input type="checkbox" on:click={specifySound}/>
+			
+			<!-- volume on icon -->
+			<svg class="fill-current w-5 h-5 swap-on" viewBox="0 0 24 24"><path d="M14,3.23V5.29C16.89,6.15 19,8.83 19,12C19,15.17 16.89,17.84 14,18.7V20.77C18,19.86 21,16.28 21,12C21,7.72 18,4.14 14,3.23M16.5,12C16.5,10.23 15.5,8.71 14,7.97V16C15.5,15.29 16.5,13.76 16.5,12M3,9V15H7L12,20V4L7,9H3Z"/></svg>
+			
+			<!-- volume off icon -->
+			<svg class="fill-current w-5 h-5 swap-off" viewBox="0 0 24 24"><path d="M3,9H7L12,4V20L7,15H3V9M16.59,12L14,9.41L15.41,8L18,10.59L20.59,8L22,9.41L19.41,12L22,14.59L20.59,16L18,13.41L15.41,16L14,14.59L16.59,12Z"/></svg>
+			
+		</label>
+
 		<label class="btn btn-ghost btn-circle swap swap-rotate">
   
 			<!-- this hidden checkbox controls the state -->
@@ -80,14 +111,19 @@
 	  	<p>&copy; {now} Bored Games by <a class="link link-hover" href="https://github.com/koguma" target="_blank">Koguma</a>. Open-source on </p>
 	  	<a class="icon" href="https://github.com/koguma/boredgames" target="_blank"><svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 19c-5 1.5-5-2.5-7-3m14 6v-3.87a3.37 3.37 0 0 0-.94-2.61c3.14-.35 6.44-1.54 6.44-7A5.44 5.44 0 0 0 20 4.77 5.07 5.07 0 0 0 19.91 1S18.73.65 16 2.48a13.38 13.38 0 0 0-7 0C6.27.65 5.09 1 5.09 1A5.07 5.07 0 0 0 5 4.77a5.44 5.44 0 0 0-1.5 3.78c0 5.42 3.3 6.61 6.44 7A3.37 3.37 0 0 0 9 18.13V22"></path></svg></a>
 	</div>
-	<a class="text-xxs" href="https://www.flaticon.com/free-icons/board-game" title="board game icons">Board game icons created by Freepik - Flaticon</a>
+	<span class="text-xxs">Icons made by Freepik from flaticon.com | Music by www.bensound.com</span>
+	
+</footer>
+{:else}
+<footer class="footer border-t bg-base-200 text-base-content border-base-300 footer-center absolute bottom-0">
+	<span class="text-xxs">Icons made by Freepik from flaticon.com | Music by www.bensound.com</span>
 </footer>
 {/if}
 
 <style>
 	.text-xxs {
 		font-size: 0.7rem;
-		margin-top: -2rem;
+		margin-top: -3rem;
 	}
 	.icon:hover {
 		animation: bounce 0.8s ease-in-out;

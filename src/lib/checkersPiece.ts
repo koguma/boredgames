@@ -25,7 +25,7 @@ export class Piece {
     }
 
     public isKing() {
-        return this.isKing
+        return this.king
     }
     
 }

@@ -232,9 +232,9 @@ async def join_2p_board_game(game: Union[Checkers, Connect4], websocket: WebSock
 
         # recieve a new event from the websocket
         received = await websocket.receive_json()
-
-        if received["event"] == "move" and not game.is_over:
-            try:
+        try:
+            if received["event"] == "move" and not game.is_over:
+                
                 if game_type == "connect-4":
                     column = received["column"]
                     winner, coords = game.make_move(player, column) # make a new move with the receieved event
@@ -258,7 +258,7 @@ async def join_2p_board_game(game: Union[Checkers, Connect4], websocket: WebSock
                 elif game_type == "checkers":
 
                     #get the resulting move, and add a new JSON key event
-                    result = game.make_move(player, tuple(received["current_position"]), tuple(received["next_position"]))
+                    result, winner = game.make_move(player, tuple(received["current_position"]), tuple(received["next_position"]))
                     result.update({"event": "move"})
 
                     # broadcast the move to all players
@@ -268,28 +268,36 @@ async def join_2p_board_game(game: Union[Checkers, Connect4], websocket: WebSock
                     if game.is_over:
                         await game.broadcast({
                             "event": "end",
-                            "player": game.current_player
+                            "player": winner
                         })
+            
+            elif received["event"] == "rematch" and game.is_over:
+                success = game.reset_board(player) # cast their vote to reset the board
 
-            except RuntimeError as e:
-                # relay any runtime error back to the client
+                # broadcast that the rematch is happening
+                if success:
+                    await game.broadcast({
+                        "event": "rematch",
+                        "player": game.current_player
+                    })
+            
+            elif received["event"] == "help" and game_type == "checkers" and not game.is_over:
+                result = game.get_possible_moves(player, tuple(received["current_position"]))
+                print(result)
+                await websocket.send_json({
+                    "event": "answer",
+                    "moves": result
+                })
+            else:
+                # message the client that the event is not valid 
                 await game.send(websocket, {
                     "event": "error",
-                    "message": str(e)
+                    "message": "invalid event"
                 })
         
-        elif received["event"] == "rematch" and game.is_over:
-            success = game.reset_board(player) # cast their vote to reset the board
-
-            # broadcast that the rematch is happening
-            if success:
-                await game.broadcast({
-                    "event": "rematch",
-                    "player": game.current_player
-                })
-        else:
-            # message the client that the event is not valid 
+        except RuntimeError as e:
+            # relay any runtime error back to the client
             await game.send(websocket, {
                 "event": "error",
-                "message": "invalid event"
-            })
+                "message": str(e)
+        })

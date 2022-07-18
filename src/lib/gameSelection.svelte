@@ -38,8 +38,8 @@
         </div>
         <div class="form-control">
             <label class="label cursor-pointer justify-start">
-                <input type="radio" name="radio-game" class="radio checked:bg-blue-500 mr-3" bind:group={$gameType} value={"battleship"} />
-                <span class="label-text">Battleship</span> 
+                <input type="radio" name="radio-game" class="radio checked:bg-blue-500 mr-3" bind:group={$gameType} value={"battleship"} disabled/>
+                <span class="label-text line-through">Battleship</span> 
             </label>
         </div>
     </div>
@@ -62,7 +62,7 @@
             <!-- svelte-ignore a11y-missing-attribute -->
             <li on:click={() => {updateGameType("checkers")}}><a>Checkers</a></li>
             <!-- svelte-ignore a11y-missing-attribute -->
-            <li on:click={() => {updateGameType("battleship")}}><a>Battleship</a></li>
+            <li disabled class="line-through"><a>Battleship</a></li>
         </ul>
     </div>
 </div>

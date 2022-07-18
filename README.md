@@ -2,7 +2,16 @@
 
 Back-end written in Python + FastAPI, Front-end in Svelte + Tailwind
 
-Play connect 4, checkers, and battleship with your friends or anyone online!
+The goal is to create an open-source central hub where lots of board games can be played by anyone around the world
+
+Play connect 4, checkers, battleship, etc... with your friends, or anyone online!
+
+Fully functioning engine (with valid draw, win, lose, movement etc...) with support for private and public lobbies for:
+    connect 4
+    checkers
+    battleship (will be implemented someday)
+
+If you have any suggestions, feedbacks, or anything really, feel free to create an issue or contact me via email :)
 
 ## Developing
 
@@ -13,6 +22,17 @@ npm run dev
 
 # or start the server and open the app in a new browser tab
 npm run dev -- --open
+```
+To run the python back-end server:
+
+```bash
+pip install fastapi
+
+pip install "uvicorn[standard]"
+
+# and run the following command in the back-end folder
+
+uvicorn main:app --reload
 ```
 
 ## Building

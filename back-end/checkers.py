@@ -1,4 +1,4 @@
-import enum
+from collections import defaultdict
 from game import BoardGame
 from typing import Dict, List, Optional, Tuple, Union
 
@@ -9,16 +9,23 @@ class Piece:
     Attributes:
         owner: player number that controls this piece
         is_king: whether the piece has ascended to a king piece
+        moves: possible default moves a piece can make
+        moves_eat: possible eating moves a piece can make
     """
 
-    moves = {
-        (1,1): (-2,-2),
-        (-1,-1): (2,2),
-        (1,-1): (-2,2),
-        (-1,1): (2,-2)
-    }
+    moves = [
+        (1,1),
+        (-1,-1),
+        (1,-1),
+        (-1,1)
+    ]
 
-    moves_eat = [(-2,-2), (2,2), (-2,2), (2,-2)]
+    moves_eat = [
+        (2,-2),
+        (-2,2),
+        (2,2),
+        (-2,-2)
+    ]
 
     def __init__(self, player: int) -> None:
         """
@@ -32,6 +39,12 @@ class Piece:
         self.is_king = False
 
 class Checkers(BoardGame):
+    """
+    Class used create a new checkers game
+
+    Attributes:
+        all_moves: dictionary containing all the moves that can currently be played on the board
+    """
 
     def __init__(self, room_id : str) -> None:
         """
@@ -45,31 +58,10 @@ class Checkers(BoardGame):
 
         self.init_board()
 
-        self.force_eats = {
-            1: [],
-            2: []
-        }
-
-    def get_next_plauer(self) -> int:
+    def init_board(self) -> None:
         """
-        Change the current player
+            Initialise the board to its default state
         """
-
-        return 1 if self.current_player == 2 else 2
-
-    def get_all_eats(self, player: int) -> List[Dict[str,int]]:
-        return self.force_eats[player]
-
-    def reset_board(self, player):
-        if super().reset_board(player):
-            self.init_board()
-
-    def init_board(self):
-
-        self.count = {
-            1: 12,
-            2: 12
-        }
 
         # initialise the board
         switch = 1
@@ -85,19 +77,125 @@ class Checkers(BoardGame):
             
             switch ^= 1 # bitwise XOR
 
-    def is_won(self):
-        return all(i == 0 for i in self.count) or all(i == 1 for i in self.count)
+        self.calculate_all_moves()
 
-    def make_move(self, player: int, current_position: Tuple[int,int], future_position: Tuple[int,int]) -> Dict:
+    def get_next_plauer(self) -> int:
+        """
+        Get the next player in line
+
+        Returns:
+            the next player id
+        """
+
+        return 1 if self.current_player == 2 else 2
+
+    def reset_board(self, player: int) -> bool:
+        """
+            Reset the board if all players voted to reset it
+
+            Args:
+                player: the player calling the vote
+        """
+
+        success = False
+        
+        # call the superclass' function and initialise the board
+        if super().reset_board(player):
+            self.init_board()
+            success = True
+        
+        return success
+
+    def get_possible_moves(self, player: int, current_position: Tuple[int,int]) -> List[Dict[str,Tuple[int,int]]]:
+        """
+            Get all the moves that can currently be played out on the board from the current position
+
+            Returns:
+                all the moves that can be played by the player's chosen piece
+        """
+        
+        try:
+            # prioritise eating moves (force eats)
+            if len(self.all_moves["moves_eat"][player]) > 0:
+                return self.all_moves["moves_eat"][player][current_position]
+            
+            # otherwise, return the normal moves
+            return self.all_moves["moves"][player][current_position]
+            
+        except KeyError:
+            return []
+
+    def calculate_all_moves(self) -> None:
+        """
+            Calculate all the moves that can currently be played out on the board
+        """
+
+        # Reset the dictionary of moves that can be made on the current 
+        self.all_moves = {
+            "moves_eat": {player: {} for player in [1,2]},
+            "moves": {player: {} for player in [1,2]},
+        }
+
+        # for every piece (square) on the board, get the player number owning the piece
+        for x, col in enumerate(self.board):
+            for y, piece in enumerate(col):
+                try:
+                    player = piece.owner
+                except AttributeError:
+                    continue
+                
+                current_position = (x,y)
+
+                # if there is no eating moves, find the normal moves
+                if not self.find_valid_moves(player, current_position, Piece.moves_eat, "moves_eat"):
+                    self.find_valid_moves(player, current_position, Piece.moves, "moves")
+
+    def find_valid_moves(self, player: int, current_position: Tuple[int,int], lst: List[Tuple[int,int]], key: str) -> None:
+        """
+        Find all the valid moves that can be played out from the current_position
+
+        Args:
+            player: player number making the move
+            current_position: position on the board of the chosen piece
+            lst: list of valid coordinates to be checked
+            key: name of the key in all_moves dictionary
+        
+        Returns:
+            True if there are valid moves False otherwise
+        """
+
+        x,y = current_position
+
+        # call the is_valid_move function for every possible moves
+        for x_displacement, y_displacement in lst:
+            future_position = (x+x_displacement, y+y_displacement)
+
+            is_valid, _ = self.is_valid_move(current_position, future_position)
+            
+            if is_valid:
+
+                # create an empty list if it doesn't exist
+                if current_position not in self.all_moves[key][player]:
+                    self.all_moves[key][player][current_position] = []
+
+                # append a new dictionary listing the possible moves
+                self.all_moves[key][player][current_position].append({
+                    "possible_move": future_position,
+                })
+        
+        return True if current_position in self.all_moves[key][player] else False
+
+    def make_move(self, player: int, current_position: Tuple[int,int], future_position: Tuple[int,int]) -> Tuple[Dict[str,object],int]:
         """
         Allow a player to make a move on the checkers board
 
         Args:
             player: player number making the move
-            current_position: column the move should be played
+            current_position: position on the board of the chosen piece
+            future_position: resulting position of the chosen piece on the board after the move
 
         Returns:
-            TODO: figure out the implementation
+            tuple containing the move details and the winner details
         """
 
         if not self.started:
@@ -106,145 +204,108 @@ class Checkers(BoardGame):
         if player != self.current_player:
             raise RuntimeError("It is not your turn yet")
     
-        is_valid, eaten = self.is_valid_move(player, current_position, future_position, testing=False)
+        # check if move is valid
+        is_valid, eaten = self.is_valid_move(current_position, future_position, testing=False)
         
         if is_valid:
             x1, y1 = current_position
             x2, y2 = future_position
             
+            # move the piece
             self.board[x2][y2] = self.board[x1][y1]
             self.board[x1][y1] = 0
             
+            # if eaten, change the middle piece to 0
             if eaten:
                 self.board[eaten[0]][eaten[1]] = 0
-        
-            self.update_force_eats(player, future_position)
-            print(self.force_eats)
 
         else:
             raise RuntimeError("This is not a valid move")
         
-        if self.is_won():
+        # recalculate all the possible moves after the move was made
+        self.calculate_all_moves()
+        
+        # get all the players that can no longer make a move
+        players_that_cannnot_make_moves = [i for i in self.used_player_numbers if len(self.all_moves["moves_eat"][i]) == 0 and len(self.all_moves["moves"][i]) == 0]
+        
+        winner = 0
+        
+        if len(players_that_cannnot_make_moves) > 0:
+            # if no possible moves by a player, then the game is over
             self.is_over = True
 
-        if ((eaten and len(self.force_eats[player]) == 0) or not eaten) and not self.is_over:
+            # if both players cannot make a move, it is a draw
+            if len(players_that_cannnot_make_moves) == 2:
+                winner = 3
+            elif players_that_cannnot_make_moves[0] == 1:
+                winner = 2
+            else:
+                winner = 1
+
+        # if there is no force eats, then change turn
+        if (eaten and len(self.all_moves["moves_eat"][player]) == 0 or not eaten) and not self.is_over:
             self.current_player = self.get_next_plauer()
 
-        new_board = [[0]*8 for _ in range(8)]
-        for i,col in enumerate(self.board):
-            for j,square in enumerate(col):
-                try:
-                    new_board[i][j] = square.owner
-                except:
-                    continue
-            print(new_board[i])
-
-        return {
+        return ({
             "previous_position": current_position,
             "current_position": future_position,
             "player": player,
             "next": self.current_player,
             "eaten": eaten,
             "king": self.board[x2][y2].is_king
-        }
+        },winner)
 
-    def is_valid_move(self, player: int, current_position: Tuple[int,int], future_position: Tuple[int,int], middle_coord : Optional[Tuple[int,int]] = None, testing: bool = True) -> Tuple[bool, Optional[Tuple[int,int]]]:
+    def is_valid_move(self, current_position: Tuple[int,int], future_position: Tuple[int,int], testing: bool = True) -> Tuple[bool, Optional[Tuple[int,int]]]:
+        
         x1, y1 = current_position
         x2, y2 = future_position
         is_valid = False
         eaten = None
-
-        if x1 < 0 or x2 < 0 or y1 < 0 or y2 < 0:
-            return (is_valid, eaten)
-
-        if not testing and len(self.force_eats[player]) > 0 and all(current_position != move["current_position"] and future_position != move["future_position"] for move in self.force_eats[player]):
-            print(current_position)
-            print(future_position)
-            return (is_valid, eaten)
+        
+        # don't accept any negative indexes for the board as it will cause error
+        if x1 < 0 or x2 < 0 or y1 < 0 or y2 < 0: return (is_valid, eaten)
 
         try:
             selected_piece = self.board[x1][y1]
+            player = selected_piece.owner
+
+            # if the move is being played and not tested, then prioritise force eats
+            if not testing:
+                if len(self.all_moves["moves_eat"][player]) > 0:
+                    if current_position not in self.all_moves["moves_eat"][player] or not any((future_position == move["possible_move"]) for move in self.all_moves["moves_eat"][player][current_position]):
+                        return (is_valid, eaten)
 
             next_location = self.board[x2][y2]
 
-            if selected_piece.owner == player and next_location == 0:
+            # destination should be an emtpy square
+            if next_location == 0:
                 displacement = (x1-x2,y1-y2)
 
+                # if the move is an eating move, make sure the middle piece is of opposite player, and that the move itself is valid
                 if displacement in Piece.moves_eat:
                     temp_x = x2+int(displacement[0]/2)
                     temp_y = y2+int(displacement[1]/2)
                     middle_piece = self.board[temp_x][temp_y]
             
-                    if (middle_coord and middle_coord == (temp_x,temp_y)) or middle_piece.owner != player:
+                    if middle_piece.owner != player:
                         if (selected_piece.is_king
                             or selected_piece.owner == 1 and displacement[1] < 0
                             or selected_piece.owner == 2 and displacement[1] > 0):
                             is_valid = True
                             eaten = (temp_x,temp_y)
 
+                # if the move is a normal move, make sure that the move itself is valid
                 elif displacement in Piece.moves:
                     if (selected_piece.is_king
                         or selected_piece.owner == 1 and displacement[1] < 0
                         or selected_piece.owner == 2 and displacement[1] > 0):
                         is_valid = True
 
-                if is_valid and future_position[1] == 7 or future_position[1] == 0:
+                # if the move is being played and not tested, then upgrade the piece to king if it satisfies the conditions
+                if not testing and is_valid and (future_position[1] == 7 or future_position[1] == 0) and not selected_piece.is_king:
                     selected_piece.is_king = True
 
         except (IndexError, AttributeError):
             pass
 
         return (is_valid, eaten)
-
-    def update_force_eats(self, player: int, current_position: Tuple[int,int]) -> None:
-        x,y = current_position
-        self.force_eats[player] = []
-        next_player = self.get_next_plauer()   
-
-        for x_displacement, y_displacement in Piece.moves_eat:
-            future_position = (x+x_displacement, y+y_displacement)
-            middle_position = (x+int(x_displacement/2), y+int(y_displacement/2))
-            try:
-                is_valid, _ = self.is_valid_move(player, current_position, future_position)
-                if is_valid:
-                    
-                    self.force_eats[player].append({
-                        "current_position": current_position,
-                        "future_position": future_position
-                    })
-
-                    # for key in Piece.moves:
-                    #     starting_position = (future_position[0]+key[0], future_position[1]+key[1])
-                    #     corresponding_destination = (starting_position[0]+Piece.moves[key][0],starting_position[1]+Piece.moves[key][1])
-                    #     try:
-
-                    #         if self.is_valid_move(next_player, starting_position, corresponding_destination, middle_coord=middle_position):
-                                
-                    #             self.force_eats[next_player].append({
-                    #                 "current_position": starting_position,
-                    #                 "future_position": corresponding_destination
-                    #             })
-
-                    #     except (IndexError, AttributeError):
-                    #         continue
-
-            except (IndexError, AttributeError):
-                continue
-
-        if len(self.force_eats[player]) == 0:
-            for key in Piece.moves:
-                starting_position = (x+key[0], y+key[1])
-                corresponding_destination = (starting_position[0]+Piece.moves[key][0],starting_position[1]+Piece.moves[key][1])
-
-                try:
-                    is_valid, _ = self.is_valid_move(next_player, starting_position, corresponding_destination)
-                    if is_valid:
-                        
-                        self.force_eats[next_player].append({
-                            "current_position": starting_position,
-                            "future_position": corresponding_destination
-                        })
-                        print("why did this not work")
-
-                except (IndexError, AttributeError):
-                    continue

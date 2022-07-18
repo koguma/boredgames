@@ -1,6 +1,6 @@
 <script lang="ts">
     import { onDestroy, onMount } from 'svelte';
-    import {name, joinedRoom, error} from '$lib/stores.js'
+    import {name, joinedRoom, error, playAudio} from '$lib/stores.js'
 
     export let socket : WebSocket
 
@@ -13,6 +13,17 @@
     let gameOver = false
     let rematching = false
     let nextPlayer = 1
+    let moveSound = new Audio('/move.wav')
+    let errorSound = new Audio('/error.wav')
+    let winSound = new Audio('/win.wav')
+    let loseSound = new Audio('/lose.wav')
+    let successSound = new Audio('/success.wav')
+
+    moveSound.volume = 0.5
+    errorSound.volume = 0.5
+    winSound.volume = 0.5
+    loseSound.volume = 0.5
+    successSound.volume = 0.5
 
     function createBoard() {
         board = new Array(7)
@@ -28,18 +39,27 @@
             if (received.event == "move") {
                 board[received.x][received.y] = received.player
                 nextPlayer = received.next
+                if ($playAudio) {
+                    moveSound.play()
+                }
             }
             else if (received.event == "error") {
+                if ($playAudio) {
+                    errorSound.play()
+                }
                 $error = received.message
                 setTimeout(() => {
                     $error = ""
-                }, 2000)
+                }, 1000)
             }
             else if (received.event == "end") {
                 nextPlayer = received.player
                 gameOver = true
             }
             else if (received.event == "disconnected") {
+                if ($playAudio) {
+                    errorSound.play()
+                }
                 $error = received.message
                 setTimeout(() => {
                     $error = ""
@@ -50,11 +70,17 @@
                 player = received["you"]
             }
             else if (received.event == "started") {
+                if ($playAudio) {
+                    successSound.play()
+                }
                 let otherPlayer = player == 1 ? 2 : 1
                 opponent = received[otherPlayer]
                 $joinedRoom = true
             }
             else if (received.event == "rematch") {
+                if ($playAudio) {
+                    successSound.play()
+                }
                 createBoard()
                 gameOver = false
                 rematching = false
@@ -103,13 +129,21 @@
         if (gameOver) {
             if (nextPlayer == 3) {
                 result = "Draw!"
+                if ($playAudio) {
+                    loseSound.play()
+                }
             }
             else if (nextPlayer == player) {
                 result = "You won!"
+                if ($playAudio) {
+                    winSound.play()
+                }
             }
             else {
-                console.log(nextPlayer)
                 result = "You lost!"
+                if ($playAudio) {
+                    loseSound.play()
+                }
             }
         }
         return result
