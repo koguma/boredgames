@@ -35,6 +35,7 @@
 	"type": "module",
 	"dependencies": {
 		"@fontsource/fira-mono": "^4.5.0",
+		"@sveltejs/adapter-static": "^1.0.0-next.37",
 		"cookie": "^0.4.1",
 		"daisyui": "^2.17.0",
 		"ws": "^8.8.0"

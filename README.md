@@ -2,7 +2,7 @@
 
 Back-end written in Python + FastAPI, Front-end in Svelte + Tailwind
 
-Come and play! [boredgames.koguma.co](https://boredgames.koguma.co)
+Live URL: [boredgames.koguma.co](https://boredgames.koguma.co)
 
 The goal is to create an open-source central hub where lots of board games can be played by anyone around the world.
 

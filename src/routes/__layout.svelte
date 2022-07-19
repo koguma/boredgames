@@ -69,7 +69,7 @@
 			{#if $joinedRoom}
 			Leave
 			{:else}
-			<img class="h-6 w-6 mr-1" src="./table-games.png" alt="logo"/> Bored Games
+			<img class="h-6 w-6 mr-1" src="/table-games.png" alt="logo"/> Bored Games
 			{/if}
 		</a>
 	</div>
