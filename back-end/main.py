@@ -1,15 +1,16 @@
 import asyncio
 import json
+from tracemalloc import start
 from fastapi import FastAPI, WebSocketDisconnect, status, WebSocket
 from game import Game, Player
 from connect4 import Connect4
-from checkers import Checkers
+from checkers import Checkers, Piece
 from fastapi.middleware.cors import CORSMiddleware
 from typing import Dict, List, Tuple
 from math import floor, ceil
-from random import choice
+from random import choice, random
 
-nicknames = ["John", "Ben", "Shiba", "Tom", "Tim", "Kong Ming", "Joe", "Spiderman", "Mona", "Link"]
+nicknames = ["John", "Ben", "Shiba", "Tom", "Tim", "Kong Ming", "Joe", "Spiderman", "Mona", "Link", "Sushiboy", "Squidquick", "Your penpal", "call me beep me", "Lebron James", "James Harden", "Curry", "Papa"]
 
 current_index = -1
 def get_next_name() -> str:
@@ -221,7 +222,7 @@ async def join_room(websocket: WebSocket, game_type: str, nickname: str, room_id
             total_online -= 1 # decrement total number of connections by 1
             game.remove(player) # remove the websocket/player from the game
             
-            if game.dummy_plug:
+            if game.dummy_plug.id:
                 total_online -= 1
 
             # broadcast the disconnection
@@ -231,7 +232,7 @@ async def join_room(websocket: WebSocket, game_type: str, nickname: str, room_id
             })
             
             # if all connections in the game is lost, remove the room
-            if len(game.connections) == 0 or game.dummy_plug:
+            if len(game.connections) == 0 or game.dummy_plug.id:
                 try:
                     sentinel.remove_room(game_type, game, is_public)
                 except RuntimeError:
@@ -239,15 +240,15 @@ async def join_room(websocket: WebSocket, game_type: str, nickname: str, room_id
 
 async def predict_next_connect4_move(game: Connect4):
     """
-        used by the bot to generate the next move
+        used by the bot to generate the next connect 4 move. Implementation is bizzare but that's what makes it good
         NOTE: Actually stronger than me, I keep losing to it
 
         Args:
             game: the instance of connect 4 game the move should be calculated against
     """
     moves = {}
-    me = game.dummy_plug
-    opponent = 1 if game.dummy_plug == 2 else 2
+    me = game.dummy_plug.id
+    opponent = 1 if game.dummy_plug.id == 2 else 2
     
     for col in range(game.dimensions["col"]):
         await asyncio.sleep(0.2)
@@ -262,7 +263,7 @@ async def predict_next_connect4_move(game: Connect4):
                     try:
                         n = game.count_all_consecutive(opponent, col,i+1)
                         if n >= 3:
-                            rank = -1
+                            rank = -100
                     except IndexError:
                         pass
                 else:
@@ -270,15 +271,16 @@ async def predict_next_connect4_move(game: Connect4):
                     return col
 
                 # prefer not putting on the corner if it is the bottom piece
-                if game.board[3][i] == opponent and (col == 0 or col == 6) and i > 3:
-                    rank = -1
+                if game.board[3][i] == opponent and (col == 0 or col == 6) and i > 3 and rank != -100:
+                    rank = -5
 
                 n = game.count_all_consecutive(opponent, col,i)
+                
                 if n >= 3:
                     await asyncio.sleep(0.4)
                     return col
                 
-                if rank != -1:
+                if rank != -100:
                     rank = max(rank, n)
 
                 if rank not in moves:
@@ -289,6 +291,8 @@ async def predict_next_connect4_move(game: Connect4):
                 break
 
     lst = moves[max(moves.keys())]
+    await asyncio.sleep(random()*1.2)
+
     if len(lst) == 1:
         return lst[0]
     else:
@@ -304,14 +308,14 @@ async def dummy_make_connect4_move(game: Connect4) -> None:
     next_move = await predict_next_connect4_move(game)
 
     # make a new move with the receieved event
-    winner, coords = game.make_move(game.dummy_plug,next_move)
+    winner, coords = game.make_move(game.dummy_plug.id,next_move)
     
     # broadcast the move to all players
     await game.broadcast({
         "event": "move",
         "x": coords[0],
         "y": coords[1],
-        "player": game.dummy_plug,
+        "player": game.dummy_plug.id,
         "next": game.current_player
     })
 
@@ -347,10 +351,10 @@ async def join_connect4(game: Connect4, player: Player):
                     if ok:
                         total_online += 1
                         
-                        if game.started and game.current_player == game.dummy_plug:
+                        if game.started and game.current_player == game.dummy_plug.id:
                             await dummy_make_connect4_move(game)
 
-            elif received["event"] == "move" and not game.is_over and game.started:
+            elif received["event"] == "move" and not game.is_over:
                 column = received["column"]
                 
                 # make a new move with the receieved event
@@ -372,7 +376,7 @@ async def join_connect4(game: Connect4, player: Player):
                         "player": winner
                     })
                 
-                elif game.dummy_plug:
+                elif game.dummy_plug.id:
                     await dummy_make_connect4_move(game)
 
             elif received["event"] == "rematch" and game.is_over:
@@ -380,13 +384,23 @@ async def join_connect4(game: Connect4, player: Player):
 
                 # broadcast that the rematch is happening
                 if success:
+                    if game.dummy_plug.id:
+                        await asyncio.sleep(random()*4)
                     await game.broadcast({
                         "event": "rematch",
                         "player": game.current_player
                     })
 
-                    if game.started and game.current_player == game.dummy_plug:
+                    if game.current_player == game.dummy_plug.id:
                         await dummy_make_connect4_move(game)
+                elif game.dummy_plug.id:
+                    await asyncio.sleep(random()*4)
+                    
+                    # broadcast the disconnection
+                    await game.broadcast({
+                        "event": "disconnected",
+                        "message": f"{game.dummy_plug.id} (opponent) disconnected"
+                    })
             else:
                 # message the client that the event is not valid 
                 await game.send(player, {
@@ -401,6 +415,141 @@ async def join_connect4(game: Connect4, player: Player):
                 "message": str(e)
         })
 
+async def predict_next_checkers_move(game: Checkers) -> Tuple[Tuple[int,int],Tuple[int,int]]:
+    """
+        used by the bot to generate the next checkers move. Implementation is bizzare but that's what makes it good
+        NOTE: Actually stronger than me, I keep losing to it
+
+        Args:
+            game: the instance of connect 4 game the move should be calculated against
+    """
+
+    moves = {}
+
+    if game.all_moves["moves_eat"][game.dummy_plug.id]:
+        
+        for starting_position in game.all_moves["moves_eat"][game.dummy_plug.id]:
+            await asyncio.sleep(0.2)
+            rank = 1
+
+            piece = game.board[starting_position[0]][starting_position[1]]
+            for move in game.all_moves["moves_eat"][game.dummy_plug.id][starting_position]:
+                
+                game.board[move["possible_move"][0]][move["possible_move"][1]] = piece
+                game.board[starting_position[0]][starting_position[1]] = 0
+                
+                for x_displacement, y_displacement in Piece.moves_eat:
+                    next_x, next_y = move["possible_move"][0]+x_displacement, move["possible_move"][1]+y_displacement
+                    if game.is_valid_move(move["possible_move"], (next_x, next_y)):
+                        rank += 10
+                        break
+
+                if rank == 1:
+                    
+                    for x_displacement, y_displacement in Piece.moves:
+                        next_x, next_y = move["possible_move"][0]+x_displacement, move["possible_move"][1]+y_displacement
+                        
+                        try:
+                            another_piece = game.board[next_x][next_y]
+                            if another_piece.owner != game.dummy_plug.id:
+                                for new_x, new_y in Piece.moves_eat:
+                                    if game.is_valid_move((next_x, next_y), (next_x+new_x,next_y+new_y), assume_middle_piece=True):
+                                        rank -= 100
+                                        break
+
+                        except (AttributeError, IndexError):
+                            continue
+                        
+                        if rank != 1:
+                            break
+
+                if (starting_position[1] == 7 and piece.owner == 2) or (starting_position[1] == 0 and piece.owner == 1):
+                    rank -= 100
+                
+                elif not piece.is_king and (move["possible_move"][1] == 7 and piece.owner == 1) or (move["possible_move"][1] == 0 and piece.owner == 2):
+                    rank += 1
+                    
+                game.board[move["possible_move"][0]][move["possible_move"][1]] = 0
+                game.board[starting_position[0]][starting_position[1]] = piece
+                
+                if rank not in moves:
+                    moves[rank] = []
+                
+                moves[rank].append((starting_position, move["possible_move"]))
+    
+    else:
+        for starting_position in game.all_moves["moves"][game.dummy_plug.id]:
+            await asyncio.sleep(0.2)
+            
+            piece = game.board[starting_position[0]][starting_position[1]]
+            
+            for move in game.all_moves["moves"][game.dummy_plug.id][starting_position]:
+                game.board[move["possible_move"][0]][move["possible_move"][1]] = piece
+                game.board[starting_position[0]][starting_position[1]] = 0
+                rank = 1
+
+                found = False
+
+                for x_displacement, y_displacement in Piece.moves:
+                    next_x, next_y = move["possible_move"][0]+x_displacement, move["possible_move"][1]+y_displacement
+                    for new_x, new_y in Piece.moves_eat:
+                        if game.is_valid_move((next_x, next_y), (next_x+new_x,next_y+new_y), assume_middle_piece=True):
+                            try:
+                                another_piece = game.board[next_x][next_y]
+                                if another_piece.owner != game.dummy_plug.id:
+                                    rank -= 100
+                                    found = True
+                                    break
+                                else:
+                                    rank += 3
+                            except (AttributeError, IndexError):
+                                continue
+                    if found:
+                        break
+                
+                if (starting_position[1] == 7 and piece.owner == 2) or (starting_position[1] == 0 and piece.owner == 1):
+                    rank -= 100
+                elif not piece.is_king and (move["possible_move"][1] == 7 and piece.owner == 1) or (move["possible_move"][1] == 0 and piece.owner == 2):
+                    rank += 1
+
+                game.board[move["possible_move"][0]][move["possible_move"][1]] = 0
+                game.board[starting_position[0]][starting_position[1]] = piece
+                
+                if rank not in moves:
+                    moves[rank] = []
+
+                moves[rank].append((starting_position, move["possible_move"]))
+    
+    await asyncio.sleep(random()*2)
+    lst = moves[max(moves.keys())]
+    return choice(lst)
+
+async def dummy_make_checkers_move(game: Checkers) -> None:
+    """
+        allow the dummy plug to make a checkers move
+
+        Args:
+            game: the instance of connect 4 game the move should be calculated against
+    """
+    starting_position, next_position = await predict_next_checkers_move(game)
+
+    #get the resulting move, and add a new JSON key event
+    result, winner = game.make_move(game.dummy_plug.id, starting_position, next_position)
+    result.update({"event": "move"})
+
+    # broadcast the move to all players
+    await game.broadcast(result)
+
+    # check if game is won, then broadcast that the game is over
+    if game.is_over:
+        await game.broadcast({
+            "event": "end",
+            "player": winner
+        })
+    
+    elif game.current_player == game.dummy_plug.id:
+        await dummy_make_checkers_move(game)
+
 async def join_checkers(game: Checkers, player: Player) -> None:
     """
     Handle checkers game
@@ -411,6 +560,7 @@ async def join_checkers(game: Checkers, player: Player) -> None:
         room_id: room ID of the room the client wants to connect to
         game_type: type of game the client wants to connect to
     """
+    global total_online
 
     while True:
 
@@ -418,12 +568,22 @@ async def join_checkers(game: Checkers, player: Player) -> None:
         received = await player.connection.receive_json()
         
         try:
-            if received["event"] == "force-start" and not game.started:
-                pass
-            if received["event"] == "move" and not game.is_over:
+            if received["event"] == "force-start":
+                if not game.started:
+                    
+                    # if game has not started yet, add the dummy plug
+                    
+                    ok = await game.join(None, get_next_name())
+                    if ok:
+                        total_online += 1
+                        
+                        if game.started and game.current_player == game.dummy_plug.id:
+                            await dummy_make_checkers_move(game)
+            
+            elif received["event"] == "move" and not game.is_over:
                 
                 #get the resulting move, and add a new JSON key event
-                result, winner = game.make_move(player, tuple(received["current_position"]), tuple(received["next_position"]))
+                result, winner = game.make_move(player.id, tuple(received["current_position"]), tuple(received["next_position"]))
                 result.update({"event": "move"})
 
                 # broadcast the move to all players
@@ -435,20 +595,34 @@ async def join_checkers(game: Checkers, player: Player) -> None:
                         "event": "end",
                         "player": winner
                     })
-            
+                
+                elif game.current_player == game.dummy_plug.id:
+                    await dummy_make_checkers_move(game)
+
             elif received["event"] == "rematch" and game.is_over:
-                success = game.reset_board(player) # cast their vote to reset the board
+                success = game.reset_board(player.id) # cast their vote to reset the board
 
                 # broadcast that the rematch is happening
                 if success:
+                    if game.dummy_plug.id:
+                        await asyncio.sleep(random()*4)
                     await game.broadcast({
                         "event": "rematch",
                         "player": game.current_player
                     })
-            
+
+                    if game.current_player == game.dummy_plug.id:
+                        await dummy_make_checkers_move(game)
+                elif game.dummy_plug.id:
+                    await asyncio.sleep(random()*4)
+                    
+                    # broadcast the disconnection
+                    await game.broadcast({
+                        "event": "disconnected",
+                        "message": f"{game.dummy_plug.id} (opponent) disconnected"
+                    })
             elif received["event"] == "help" and not game.is_over:
-                result = game.get_possible_moves(player, tuple(received["current_position"]))
-                print(result)
+                result = game.get_possible_moves(player.id, tuple(received["current_position"]))
                 await game.send(player, {
                     "event": "answer",
                     "moves": result

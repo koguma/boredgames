@@ -125,9 +125,12 @@ class Checkers(BoardGame):
         except KeyError:
             return []
 
-    def calculate_all_moves(self) -> None:
+    def calculate_all_moves(self, previous_was_eat: Optional[Tuple[int,int]] = None) -> None:
         """
             Calculate all the moves that can currently be played out on the board
+
+            Args:
+                previous_was_eat: if the previous move was eat, then make sure the only availahle eat is the continuation of the previous eat
         """
 
         # Reset the dictionary of moves that can be made on the current 
@@ -146,9 +149,14 @@ class Checkers(BoardGame):
                 
                 current_position = (x,y)
 
-                # if there is no eating moves, find the normal moves
-                if not self.find_valid_moves(player, current_position, Piece.moves_eat, "moves_eat"):
-                    self.find_valid_moves(player, current_position, Piece.moves, "moves")
+                self.find_valid_moves(player, current_position, Piece.moves_eat, "moves_eat")
+                self.find_valid_moves(player, current_position, Piece.moves, "moves")
+
+        if previous_was_eat and previous_was_eat in self.all_moves["moves_eat"][self.current_player]:
+            
+            new_dict = {key: self.all_moves["moves_eat"][self.current_player][key] for key in self.all_moves["moves_eat"][self.current_player] if key == previous_was_eat}
+            
+            self.all_moves["moves_eat"][self.current_player] = new_dict
 
     def find_valid_moves(self, player: int, current_position: Tuple[int,int], lst: List[Tuple[int,int]], key: str) -> None:
         """
@@ -223,7 +231,7 @@ class Checkers(BoardGame):
             raise RuntimeError("This is not a valid move")
         
         # recalculate all the possible moves after the move was made
-        self.calculate_all_moves()
+        self.calculate_all_moves(future_position)
         
         # get all the players that can no longer make a move
         players_that_cannnot_make_moves = [i for i in self.used_player_numbers if len(self.all_moves["moves_eat"][i]) == 0 and len(self.all_moves["moves"][i]) == 0]
@@ -255,7 +263,7 @@ class Checkers(BoardGame):
             "king": self.board[x2][y2].is_king
         },winner)
 
-    def is_valid_move(self, current_position: Tuple[int,int], future_position: Tuple[int,int], testing: bool = True) -> Tuple[bool, Optional[Tuple[int,int]]]:
+    def is_valid_move(self, current_position: Tuple[int,int], future_position: Tuple[int,int], testing: bool = True, assume_middle_piece: bool = False) -> Tuple[bool, Optional[Tuple[int,int]]]:
         
         x1, y1 = current_position
         x2, y2 = future_position
@@ -287,7 +295,7 @@ class Checkers(BoardGame):
                     temp_y = y2+int(displacement[1]/2)
                     middle_piece = self.board[temp_x][temp_y]
             
-                    if middle_piece.owner != player:
+                    if assume_middle_piece or middle_piece.owner != player:
                         if (selected_piece.is_king
                             or selected_piece.owner == 1 and displacement[1] < 0
                             or selected_piece.owner == 2 and displacement[1] > 0):

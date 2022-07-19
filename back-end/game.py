@@ -1,6 +1,6 @@
 from typing import Dict, Optional
 from fastapi import WebSocket
-from random import shuffle, choice
+from random import shuffle, choice, random
 
 class Player:
 
@@ -19,6 +19,7 @@ class Game:
         started: whether the game has started or not
         unused_player_numbers: stores the player numbers that are currently assignable
         used_player_numbers: stores the player numbers that are already assigned
+        dummy_plug: dummy player pbject
     """
 
     def __init__(self, room_id: str, num_of_players: int) -> None:
@@ -33,7 +34,7 @@ class Game:
         self.connections = []
         self.room_id = room_id 
         self.started = False
-        self.dummy_plug = 0
+        self.dummy_plug = None
         self.unused_player_numbers = [i+1 for i in range(num_of_players)]
         self.used_player_numbers = []
 
@@ -71,7 +72,7 @@ class Game:
                 self.started = True
 
                 if not player.connection:
-                    self.dummy_plug = player.id
+                    self.dummy_plug = player
 
                 # notify all players the opponent details e.g. player number, nickname
                 if self.started:
@@ -160,7 +161,7 @@ class BoardGame(Game):
 
         self.board = [[0]*self.dimensions["row"] for _ in range(self.dimensions["col"])]
 
-    def reset_board(self, player: int) -> None:
+    def reset_board(self, player: int) -> bool:
         """
             Reset the board if all players voted to reset it
 
@@ -173,7 +174,8 @@ class BoardGame(Game):
         self.vote_reset.add(player) # record the player calling a reset
 
         if self.dummy_plug:
-            self.vote_reset.add(self.dummy_plug)
+            if random() > 0.15:
+                self.vote_reset.add(self.dummy_plug)
 
         # reset the board if all player agree
         if len(self.vote_reset) == len(self.used_player_numbers): 

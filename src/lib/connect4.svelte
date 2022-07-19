@@ -18,6 +18,7 @@
     let winSound = new Audio('/win.wav')
     let loseSound = new Audio('/lose.wav')
     let successSound = new Audio('/success.wav')
+    let count = 0
 
     moveSound.volume = 0.5
     errorSound.volume = 0.5
@@ -33,12 +34,6 @@
     }
 
     onMount(async() => {
-        createBoard()
-        setTimeout(() => {
-            socket.send(JSON.stringify({
-                "event": "force-start"
-            }))
-        }, 2500)
         socket.addEventListener("message", (event) => {
             let received = JSON.parse(event.data)
             if (received.event == "move") {
@@ -47,6 +42,7 @@
                 if ($playAudio) {
                     moveSound.play()
                 }
+                count = 1
             }
             else if (received.event == "error") {
                 if ($playAudio) {
@@ -73,6 +69,12 @@
             }
             else if (received.event == "connected") {
                 player = received["you"]
+                createBoard()
+                setTimeout(() => {
+                    socket.send(JSON.stringify({
+                        "event": "force-start"
+                    }))
+                }, 2500)
             }
             else if (received.event == "started") {
                 if ($playAudio) {
@@ -90,9 +92,19 @@
                 gameOver = false
                 rematching = false
                 nextPlayer = received.player
+                count = 1
             }
         } )
+        await checkAFK()
     })
+
+    async function checkAFK() {
+        count = 0
+        setTimeout(() => {
+            if (count == 0) leaveRoom()
+            else checkAFK()
+        }, 45000)
+    }
 
     onDestroy(async() => {
         leaveRoom()
@@ -100,10 +112,21 @@
 
     function handleClick() {
         if (selectedColumn != -1 && socket.readyState == 1) {
-            socket.send(JSON.stringify({
+            if (nextPlayer != player) {
+                if ($playAudio) {
+                    errorSound.play()
+                }
+                $error = "It is not your turn yet"
+                setTimeout(() => {
+                    $error = ""
+                }, 1000)
+            }
+            else {
+                socket.send(JSON.stringify({
                 "event": "move",
                 "column": selectedColumn
             }))
+            }
         }
         selectedColumn = -1
     }

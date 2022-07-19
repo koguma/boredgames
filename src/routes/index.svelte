@@ -1,5 +1,5 @@
 <svelte:head>
-	<title>Home | boredgames</title>
+	<title>Home | boredgames - play board games online </title>
 </svelte:head>
 
 <script lang="ts">

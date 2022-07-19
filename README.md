@@ -1,10 +1,12 @@
-# boredgames - WIP
+# boredgames
 
 Back-end written in Python + FastAPI, Front-end in Svelte + Tailwind
 
+Come and play! [boredgames.koguma.co](https://boredgames.koguma.co)
+
 The goal is to create an open-source central hub where lots of board games can be played by anyone around the world.
 
-To reduce the waiting time, bots that are as smart as me will play the game if there aren't enough players
+To reduce the waiting time, bots that are as smart as or smarter than me will play the game if there aren't enough players
 
 Fully functioning engine (with valid draw, win, lose, movement etc...) with support for private and public lobbies for:    
         
@@ -12,7 +14,7 @@ Fully functioning engine (with valid draw, win, lose, movement etc...) with supp
         
 * checkers    
         
-* battleship (will be implemented someday)    
+* battleship (will be implemented one day)    
     
 * and more
     

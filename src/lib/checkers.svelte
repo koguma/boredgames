@@ -16,6 +16,7 @@
     let selectedPiece : number[] = []
     let destination : number[] = []
     let waiting : boolean
+    let count = 0
 
     let moveSound = new Audio('/move.wav')
     let errorSound = new Audio('/error.wav')
@@ -95,6 +96,7 @@
                 board = board
                     
                 nextPlayer = received.next
+                count = 1
             }
             else if (received.event == "answer") {
                 highlight_x = []
@@ -138,6 +140,11 @@
             else if (received.event == "connected") {
                 player = received["you"]
                 createBoard()
+                setTimeout(() => {
+                    socket.send(JSON.stringify({
+                        "event": "force-start"
+                    }))
+                }, 2500)
             }
             else if (received.event == "started") {
                 let otherPlayer = player == 1 ? 2 : 1
@@ -151,6 +158,7 @@
                 rematching = false
                 nextPlayer = received.player
                 successSound.play()
+                count = 1
             }
             if (waiting) {
                 selectedPiece = []
@@ -158,7 +166,16 @@
                 waiting = false
             }
         } )
+        await checkAFK()
     })
+
+    async function checkAFK() {
+        count = 0
+        setTimeout(() => {
+            if (count == 0) leaveRoom()
+            else checkAFK()
+        }, 45000)
+    }
 
     onDestroy(async() => {
         leaveRoom()
@@ -175,23 +192,35 @@
                 }
                 
                 destination = [x,y]
-                
-                if (player == 1) {
-                    socket.send(JSON.stringify({
-                        "event": "move",
-                        "current_position": [Math.abs(selectedPiece[0]-7),Math.abs(selectedPiece[1]-7)],
-                        "next_position": [Math.abs(destination[0]-7),Math.abs(destination[1]-7)]
-                    }))
+                if (nextPlayer != player) {
+                    if ($playAudio) {
+                        errorSound.play()
+                    }
+                    $error = "It is not your turn yet"
+                    setTimeout(() => {
+                        $error = ""
+                    }, 1000)
+                    selectedPiece = []
+                    destination = []
                 }
-                
                 else {
-                    socket.send(JSON.stringify({
-                        "event": "move",
-                        "current_position": selectedPiece,
-                        "next_position": destination
-                    }))
+                    if (player == 1) {
+                        socket.send(JSON.stringify({
+                            "event": "move",
+                            "current_position": [Math.abs(selectedPiece[0]-7),Math.abs(selectedPiece[1]-7)],
+                            "next_position": [Math.abs(destination[0]-7),Math.abs(destination[1]-7)]
+                        }))
+                    }
+                    
+                    else {
+                        socket.send(JSON.stringify({
+                            "event": "move",
+                            "current_position": selectedPiece,
+                            "next_position": destination
+                        }))
+                    }
+                    waiting = true
                 }
-                waiting = true
             } else {
                 if (board[x][y].getOwner() != player) return
                 highlight_x = []
