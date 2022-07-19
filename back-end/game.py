@@ -1,7 +1,14 @@
-from typing import Dict
+from typing import Dict, Optional
 from fastapi import WebSocket
 from random import shuffle, choice
 
+class Player:
+
+    def __init__(self, player: int, nickname: str, connection: Optional[WebSocket]):
+        self.id = player
+        self.nickname = nickname
+        self.connection = connection
+    
 class Game:
     """
     The base class used to create all online games
@@ -23,15 +30,16 @@ class Game:
             num_of_players: number of players the game is created for
         """
 
-        self.connections = {}
+        self.connections = []
         self.room_id = room_id 
         self.started = False
+        self.dummy_plug = 0
         self.unused_player_numbers = [i+1 for i in range(num_of_players)]
         self.used_player_numbers = []
 
         shuffle(self.unused_player_numbers) # randomise the order of player numbers 
 
-    async def join(self, websocket: WebSocket, nickname: str) -> int:
+    async def join(self, websocket: Optional[WebSocket], nickname: str) -> Optional[Player]:
         """
         Connect the websocket to the game
 
@@ -43,35 +51,39 @@ class Game:
             player number if successful, 0 otherwise
         """
 
-        player = 0
+        player = None
         
         if not self.started:
             # take a player number available, assign it, and then take note of it
-            self.connections[websocket] = (self.unused_player_numbers.pop(), nickname)
-            player = self.connections[websocket][0]
+            player = Player(self.unused_player_numbers.pop(), nickname, websocket)
+            self.connections.append(player)
 
             # notify the client of their player number
-            await self.send(websocket, {
+            await self.send(player, {
                 "event": "connected",
-                "you": player
+                "you": player.id
             })
 
-            self.used_player_numbers.append(player)
+            self.used_player_numbers.append(player.id)
 
             # if there are no more player numbers available, start the game
             if len(self.unused_player_numbers) == 0:
                 self.started = True
 
+                if not player.connection:
+                    self.dummy_plug = player.id
+
                 # notify all players the opponent details e.g. player number, nickname
                 if self.started:
                     message = {"event": "started"}
-                    for key in self.connections:
-                        message[self.connections[key][0]] = self.connections[key][1]
+                    for p in self.connections:
+                        message[p.id] = p.nickname
+                    
                     await self.broadcast(message)
                     
         return player
 
-    async def send(self, websocket: WebSocket, message: Dict[str, object]) -> None:
+    async def send(self, player: Player, message: Dict[str, object]) -> None:
         """
         Send a message in JSON to the websocket object
 
@@ -80,7 +92,8 @@ class Game:
             message: a valid JSON representation
         """
 
-        await websocket.send_json(message)
+        if player.connection:
+            await player.connection.send_json(message)
 
     async def broadcast(self, message: Dict[str, object]) -> None:
         """
@@ -90,11 +103,11 @@ class Game:
             message: a valid JSON representation
         """
 
-        for websocket in self.connections:
-            await self.send(websocket, message)
+        for player in self.connections:
+            await self.send(player, message)
 
 
-    def remove(self, websocket: WebSocket, player: int) -> None:
+    def remove(self, player: Player) -> None:
         """
         Remove a currently connected websocket, and free the player number assigned to it
 
@@ -102,9 +115,9 @@ class Game:
             message: a valid JSON representation
         """
 
-        self.connections.pop(websocket)
-        self.unused_player_numbers.append(player)
-        self.used_player_numbers.remove(player)
+        self.connections.remove(player)
+        self.unused_player_numbers.append(player.id)
+        self.used_player_numbers.remove(player.id)
 
 class BoardGame(Game):
     """
@@ -158,6 +171,9 @@ class BoardGame(Game):
         flag = False
 
         self.vote_reset.add(player) # record the player calling a reset
+
+        if self.dummy_plug:
+            self.vote_reset.add(self.dummy_plug)
 
         # reset the board if all player agree
         if len(self.vote_reset) == len(self.used_player_numbers): 

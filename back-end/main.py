@@ -1,11 +1,24 @@
 import asyncio
 import json
 from fastapi import FastAPI, WebSocketDisconnect, status, WebSocket
-from game import BoardGame, Game
+from game import Game, Player
 from connect4 import Connect4
 from checkers import Checkers
 from fastapi.middleware.cors import CORSMiddleware
-from typing import Dict, List, Tuple, Union
+from typing import Dict, List, Tuple
+from random import choice
+
+nicknames = ["John", "Ben", "Shiba", "Tom", "Tim", "Kong Ming", "Joe", "Spiderman", "Mona", "Link"]
+
+current_index = -1
+def get_next_name() -> str:
+    global current_index
+    current_index += 1
+    try:
+        return nicknames[current_index]
+    except IndexError:
+        current_index = -1
+        return get_next_name()
 
 class Sentinel:
     """
@@ -192,18 +205,24 @@ async def join_room(websocket: WebSocket, game_type: str, nickname: str, room_id
 
         try:
             player = await game.join(websocket, nickname) # join the game and be assigned a player number
-            total_online += 1 # increment total number of connections by 1
+            if player:
+                total_online += 1 # increment total number of connections by 1
+                
+                # choose the correct method to handle each game
+                if game_type == "connect-4":
+                    await join_connect4(game, player)
+                elif game_type == "checkers":
+                    await join_checkers(game, player)
 
-            # choose the correct method to handle each game
-            if game_type == "connect-4" or game_type == "checkers":
-                await join_2p_board_game(game, websocket, player, game_type)
-        
         except WebSocketDisconnect:
             # if the websocket connection drops, handle the cleanup
 
             total_online -= 1 # decrement total number of connections by 1
-            game.remove(websocket, player) # remove the websocket/player from the game
+            game.remove(player) # remove the websocket/player from the game
             
+            if game.dummy_plug:
+                total_online -= 1
+
             # broadcast the disconnection
             await game.broadcast({
                 "event": "disconnected",
@@ -211,15 +230,153 @@ async def join_room(websocket: WebSocket, game_type: str, nickname: str, room_id
             })
             
             # if all connections in the game is lost, remove the room
-            if len(game.connections) == 0:
+            if len(game.connections) == 0 or game.dummy_plug:
                 try:
                     sentinel.remove_room(game_type, game, is_public)
                 except RuntimeError:
-                    return
+                    pass
 
-async def join_2p_board_game(game: Union[Checkers, Connect4], websocket: WebSocket, player: int, game_type: str) -> None:
+async def predict_next_connect4_move(game: Connect4):
+    moves = {}
+    me = game.dummy_plug
+    opponent = 1 if game.dummy_plug == 2 else 2
+    for col in range(game.dimensions["col"]):
+        await asyncio.sleep(0.2)
+        for i in reversed(range(game.dimensions["row"])):
+            if game.board[col][i] == 0:
+                rank = 0
+                c = game.count_all_consecutive(me, col,i)
+                
+                rank = max(rank,c)
+                
+                
+                if c < 3:
+                    try:
+                        n = game.count_all_consecutive(opponent, col,i+1)
+                        if n >= 3:
+                            rank = -1
+                    except IndexError:
+                        pass
+                else:
+                    return col
+
+                n = game.count_all_consecutive(opponent, col,i)
+                if n >= 3:
+                    return col
+                
+                if rank != -1:
+                    rank = max(rank, n)
+
+                if rank not in moves:
+                    moves[rank] = []
+                
+                moves[rank].append(col)
+                
+                break
+
+    return choice(moves[max(moves.keys())])
+
+async def dummy_make_connect4_move(game: Connect4) -> None:
+    next_move = await predict_next_connect4_move(game)
+
+    # make a new move with the receieved event
+    winner, coords = game.make_move(game.dummy_plug,next_move)
+    
+    # broadcast the move to all players
+    await game.broadcast({
+        "event": "move",
+        "x": coords[0],
+        "y": coords[1],
+        "player": game.dummy_plug,
+        "next": game.current_player
+    })
+
+    # if the winner is found, then broadcast that the game is over
+    if game.is_over:
+        await game.broadcast({
+            "event": "end",
+            "player": winner
+        })
+
+async def join_connect4(game: Connect4, player: Player):
     """
-    Handle 2 player board games
+    Handle connect 4 games
+    Args:
+        game: current instance of the board game
+        websocket: websocket client connecting to the endpoint
+        room_id: room ID of the room the client wants to connect to
+        game_type: type of game the client wants to connect to
+    """
+    global total_online
+
+    while True:
+
+        # recieve a new event from the websocket
+        received = await player.connection.receive_json()
+        try:
+            if received["event"] == "force-start":
+                if not game.started:
+                    ok = await game.join(None, get_next_name())
+                    if ok:
+                        total_online += 1
+                        
+                        if game.started and game.current_player == game.dummy_plug:
+                            await dummy_make_connect4_move(game)
+
+            elif received["event"] == "move" and not game.is_over:
+                column = received["column"]
+                
+                # make a new move with the receieved event
+                winner, coords = game.make_move(player.id, column)
+                
+                # broadcast the move to all players
+                await game.broadcast({
+                    "event": "move",
+                    "x": coords[0],
+                    "y": coords[1],
+                    "player": player.id,
+                    "next": game.current_player
+                })
+
+                # if the winner is found, then broadcast that the game is over
+                if game.is_over:
+                    await game.broadcast({
+                        "event": "end",
+                        "player": winner
+                    })
+                
+                elif game.dummy_plug:
+                    await dummy_make_connect4_move(game)
+
+            elif received["event"] == "rematch" and game.is_over:
+                success = game.reset_board(player.id) # cast their vote to reset the board
+
+                # broadcast that the rematch is happening
+                if success:
+                    await game.broadcast({
+                        "event": "rematch",
+                        "player": game.current_player
+                    })
+
+                    if game.started and game.current_player == game.dummy_plug:
+                        await dummy_make_connect4_move(game)
+            else:
+                # message the client that the event is not valid 
+                await game.send(player, {
+                    "event": "error",
+                    "message": "invalid event"
+                })
+        
+        except RuntimeError as e:
+            # relay any runtime error back to the client
+            await game.send(player, {
+                "event": "error",
+                "message": str(e)
+        })
+
+async def join_checkers(game: Checkers, player: Player) -> None:
+    """
+    Handle checkers game
 
     Args:
         game: current instance of the board game
@@ -231,45 +388,26 @@ async def join_2p_board_game(game: Union[Checkers, Connect4], websocket: WebSock
     while True:
 
         # recieve a new event from the websocket
-        received = await websocket.receive_json()
+        received = await player.connection.receive_json()
+        
         try:
+            if received["event"] == "force-start" and not game.started:
+                pass
             if received["event"] == "move" and not game.is_over:
                 
-                if game_type == "connect-4":
-                    column = received["column"]
-                    winner, coords = game.make_move(player, column) # make a new move with the receieved event
-                    
-                    # broadcast the move to all players
+                #get the resulting move, and add a new JSON key event
+                result, winner = game.make_move(player, tuple(received["current_position"]), tuple(received["next_position"]))
+                result.update({"event": "move"})
+
+                # broadcast the move to all players
+                await game.broadcast(result)
+
+                # check if game is won, then broadcast that the game is over
+                if game.is_over:
                     await game.broadcast({
-                        "event": "move",
-                        "x": coords[0],
-                        "y": coords[1],
-                        "player": player,
-                        "next": game.current_player
+                        "event": "end",
+                        "player": winner
                     })
-
-                    # if the winner is found, then broadcast that the game is over
-                    if game.is_over:
-                        await game.broadcast({
-                            "event": "end",
-                            "player": winner
-                        })
-                
-                elif game_type == "checkers":
-
-                    #get the resulting move, and add a new JSON key event
-                    result, winner = game.make_move(player, tuple(received["current_position"]), tuple(received["next_position"]))
-                    result.update({"event": "move"})
-
-                    # broadcast the move to all players
-                    await game.broadcast(result)
-
-                    # check if game is won, then broadcast that the game is over
-                    if game.is_over:
-                        await game.broadcast({
-                            "event": "end",
-                            "player": winner
-                        })
             
             elif received["event"] == "rematch" and game.is_over:
                 success = game.reset_board(player) # cast their vote to reset the board
@@ -281,23 +419,24 @@ async def join_2p_board_game(game: Union[Checkers, Connect4], websocket: WebSock
                         "player": game.current_player
                     })
             
-            elif received["event"] == "help" and game_type == "checkers" and not game.is_over:
+            elif received["event"] == "help" and not game.is_over:
                 result = game.get_possible_moves(player, tuple(received["current_position"]))
                 print(result)
-                await websocket.send_json({
+                await game.send(player, {
                     "event": "answer",
                     "moves": result
                 })
+
             else:
                 # message the client that the event is not valid 
-                await game.send(websocket, {
+                await game.send(player, {
                     "event": "error",
                     "message": "invalid event"
                 })
         
         except RuntimeError as e:
             # relay any runtime error back to the client
-            await game.send(websocket, {
+            await game.send(player, {
                 "event": "error",
                 "message": str(e)
         })

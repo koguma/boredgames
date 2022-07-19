@@ -34,6 +34,11 @@
 
     onMount(async() => {
         createBoard()
+        setTimeout(() => {
+            socket.send(JSON.stringify({
+                "event": "force-start"
+            }))
+        }, 2500)
         socket.addEventListener("message", (event) => {
             let received = JSON.parse(event.data)
             if (received.event == "move") {

@@ -1,4 +1,4 @@
-from game import BoardGame
+from game import BoardGame, Player
 from typing import Tuple
 
 class Connect4(BoardGame):
@@ -66,7 +66,7 @@ class Connect4(BoardGame):
         winner = 0
         
         # set the winner and is_over if the move played was a winning move
-        if self.is_winning_move(coordinates):
+        if self.count_all_consecutive(player, coordinates[0], coordinates[1]) >= 3:
             winner = self.current_player
             self.is_over = True
         
@@ -96,31 +96,26 @@ class Connect4(BoardGame):
 
         return all(self.board[i][0] for i in range(self.dimensions["col"]))
 
-    def is_winning_move(self, coords: Tuple[int, int]) -> bool:
+    def count_all_consecutive(self, player: int, x: int, y: int) -> int:
         """
-        Count all consecutive player numbers on a square that matches the current player
+        Count the maximum number of connected pieces at the position
 
         Args:
-            coords: coordinate of the move that was made
-
+            x: the x position of the square on the board
+            y: the y position of the square on the board
         Returns:
-            True if it was a winning move, False otherwise
+            the count of the maximum consecutive connected pieces
         """
-
-        x, y = coords
-        win = False
         
-        # if there was >= 3 consecutive squares surrounding the coordinate, it is a win
-        if (self.count_consecutive(x,y, Connect4.SOUTH) + self.count_consecutive(x,y, Connect4.NORTH) >= 3
-            or self.count_consecutive(x,y, Connect4.WEST) + self.count_consecutive(x,y, Connect4.EAST) >= 3
-            or self.count_consecutive(x,y, Connect4.SOUTHWEST) + self.count_consecutive(x,y, Connect4.NORTHEAST) >= 3
-            or self.count_consecutive(x,y, Connect4.SOUTHEAST) + self.count_consecutive(x,y, Connect4.NORTHWEST) >= 3):
-            
-            win = True
-        
-        return win
+        return max([
+            self.count_consecutive(player,x,y, Connect4.SOUTH) + self.count_consecutive(player,x,y, Connect4.NORTH), 
+            self.count_consecutive(player,x,y, Connect4.WEST) + self.count_consecutive(player,x,y, Connect4.EAST), 
+            self.count_consecutive(player,x,y, Connect4.SOUTHWEST) + self.count_consecutive(player,x,y, Connect4.NORTHEAST), 
+            self.count_consecutive(player,x,y, Connect4.SOUTHEAST) + self.count_consecutive(player,x,y, Connect4.NORTHWEST)
+            ])
 
-    def count_consecutive(self, x: int, y: int, direction: Tuple[int,int]) -> int:
+
+    def count_consecutive(self, player: int, x: int, y: int, direction: Tuple[int,int]) -> int:
         """
         Count all consecutive player numbers on a square that matches the current player
 
@@ -137,10 +132,12 @@ class Connect4(BoardGame):
         new_x = x + direction[0]
         new_y = y + direction[1]
 
+        if new_x < 0 or new_y < 0: return 0
+
         # if it is a valid coordinate and the square is the same as current player number, then check further
         try:
-            if self.board[new_x][new_y] == self.current_player:
-                return 1 + self.count_consecutive(new_x,new_y,direction)
+            if self.board[new_x][new_y] == player:
+                return 1 + self.count_consecutive(player, new_x,new_y,direction)
 
         except IndexError:
             pass
