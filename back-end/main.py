@@ -6,6 +6,7 @@ from connect4 import Connect4
 from checkers import Checkers
 from fastapi.middleware.cors import CORSMiddleware
 from typing import Dict, List, Tuple
+from math import floor, ceil
 from random import choice
 
 nicknames = ["John", "Ben", "Shiba", "Tom", "Tim", "Kong Ming", "Joe", "Spiderman", "Mona", "Link"]
@@ -237,9 +238,17 @@ async def join_room(websocket: WebSocket, game_type: str, nickname: str, room_id
                     pass
 
 async def predict_next_connect4_move(game: Connect4):
+    """
+        used by the bot to generate the next move
+        NOTE: Actually stronger than me, I keep losing to it
+
+        Args:
+            game: the instance of connect 4 game the move should be calculated against
+    """
     moves = {}
     me = game.dummy_plug
     opponent = 1 if game.dummy_plug == 2 else 2
+    
     for col in range(game.dimensions["col"]):
         await asyncio.sleep(0.2)
         for i in reversed(range(game.dimensions["row"])):
@@ -249,7 +258,6 @@ async def predict_next_connect4_move(game: Connect4):
                 
                 rank = max(rank,c)
                 
-                
                 if c < 3:
                     try:
                         n = game.count_all_consecutive(opponent, col,i+1)
@@ -258,10 +266,16 @@ async def predict_next_connect4_move(game: Connect4):
                     except IndexError:
                         pass
                 else:
+                    await asyncio.sleep(0.4)
                     return col
+
+                # prefer not putting on the corner if it is the bottom piece
+                if game.board[3][i] == opponent and (col == 0 or col == 6) and i > 3:
+                    rank = -1
 
                 n = game.count_all_consecutive(opponent, col,i)
                 if n >= 3:
+                    await asyncio.sleep(0.4)
                     return col
                 
                 if rank != -1:
@@ -269,14 +283,24 @@ async def predict_next_connect4_move(game: Connect4):
 
                 if rank not in moves:
                     moves[rank] = []
-                
+
                 moves[rank].append(col)
                 
                 break
 
-    return choice(moves[max(moves.keys())])
+    lst = moves[max(moves.keys())]
+    if len(lst) == 1:
+        return lst[0]
+    else:
+        return lst[choice([floor(len(lst)/2),ceil(len(lst)/2)])]
 
 async def dummy_make_connect4_move(game: Connect4) -> None:
+    """
+        allow the dummy plug to make a connect 4 move
+
+        Args:
+            game: the instance of connect 4 game the move should be calculated against
+    """
     next_move = await predict_next_connect4_move(game)
 
     # make a new move with the receieved event
@@ -316,6 +340,9 @@ async def join_connect4(game: Connect4, player: Player):
         try:
             if received["event"] == "force-start":
                 if not game.started:
+                    
+                    # if game has not started yet, add the dummy plug
+                    
                     ok = await game.join(None, get_next_name())
                     if ok:
                         total_online += 1
@@ -323,7 +350,7 @@ async def join_connect4(game: Connect4, player: Player):
                         if game.started and game.current_player == game.dummy_plug:
                             await dummy_make_connect4_move(game)
 
-            elif received["event"] == "move" and not game.is_over:
+            elif received["event"] == "move" and not game.is_over and game.started:
                 column = received["column"]
                 
                 # make a new move with the receieved event

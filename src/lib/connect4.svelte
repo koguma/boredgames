@@ -171,7 +171,7 @@
 {#if $joinedRoom}
     {#if gameOver}
     <div class="flex flex-col items-center justify-center absolute h-screen w-full bg-base-200 top-0 left-0 bg-opacity-50 z-40">
-        <div class="card bg-base-100 w-72">
+        <div class="card bg-base-100 w-72 opacity-90">
             <div class="card-body items-center text-center">
                 <h2 class="card-title">{displayResult()}</h2>
                 <p>Request rematch?</p>
