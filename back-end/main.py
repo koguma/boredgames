@@ -469,7 +469,7 @@ async def predict_next_checkers_move(game: Checkers) -> Tuple[Tuple[int,int],Tup
                     rank += 1
                 elif piece.is_king and (move["possible_move"][1] == 7 and piece.owner == 1) or (move["possible_move"][1] == 0 and piece.owner == 2):
                     rank -= 100
-                    
+
                 game.board[move["possible_move"][0]][move["possible_move"][1]] = 0
                 game.board[starting_position[0]][starting_position[1]] = piece
                 
@@ -620,7 +620,7 @@ async def join_checkers(game: Checkers, player: Player) -> None:
                     # broadcast the disconnection
                     await game.broadcast({
                         "event": "disconnected",
-                        "message": f"{game.dummy_plug.id} (opponent) disconnected"
+                        "message": f"{game.dummy_plug.nickname} (opponent) disconnected"
                     })
             elif received["event"] == "help" and not game.is_over:
                 result = game.get_possible_moves(player.id, tuple(received["current_position"]))
