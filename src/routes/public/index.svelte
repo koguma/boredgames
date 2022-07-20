@@ -3,21 +3,15 @@
 </svelte:head>
 
 <script lang="ts">
-    import {name, joinedRoom, error, gameType} from '$lib/stores.js'
+    import {name, joinedRoom, error, gameType} from '$lib/stores'
     import GameSelection from '$lib/gameSelection.svelte'
     import Connect4 from '$lib/connect4.svelte'
     import Error from '$lib/error.svelte'
     import Checkers from '$lib/checkers.svelte'
-    import { onMount } from 'svelte'
 
     let joining = false
     let cancelRoom = false
     let socket : WebSocket
-    let nickname: HTMLElement
-
-    onMount(async() => {
-        nickname.focus()
-    })
 
     async function joinRoom() {
         if (!joining) {
@@ -75,7 +69,7 @@
                                 <label class="label" for="nickname">
                                     <span class="label-text">Nickname</span>
                                 </label>
-                                <input bind:this={nickname} id="nickname" type="text" placeholder="" bind:value = {$name} class="input input-bordered" required/>
+                                <input id="nickname" type="text" placeholder="" bind:value = {$name} class="input input-bordered" required/>
                             </div>
                             <div class="form-control mt-3" on:click={joinRoom} on:mouseover={() => cancelRoom = true} on:mouseleave={() => cancelRoom = joining && false} on:focus={() => cancelRoom = true} on:blur={() => cancelRoom = false}>
                                 <button class="btn btn-primary">

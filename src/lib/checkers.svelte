@@ -1,6 +1,6 @@
 <script lang="ts">
     import { onDestroy, onMount } from 'svelte';
-    import {name, joinedRoom, error, playAudio} from '$lib/stores.js'
+    import {name, joinedRoom, error, playAudio} from '$lib/stores'
     import {Piece} from '$lib/checkersPiece'
 
     export let socket : WebSocket

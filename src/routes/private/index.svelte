@@ -3,7 +3,7 @@
 </svelte:head>
 
 <script lang="ts">
-    import {roomId, name, joinedRoom, error, gameType} from '$lib/stores.js'
+    import {roomId, name, joinedRoom, error, gameType} from '$lib/stores'
     import Error from '$lib/error.svelte'
     import GameSelection from '$lib/gameSelection.svelte'
     import Connect4 from '$lib/connect4.svelte'
@@ -12,7 +12,6 @@
     import { onMount } from 'svelte'
     import { goto } from '$app/navigation'
 
-    let nickname : HTMLElement
     let joining = false
     let url = ""
     let socket : WebSocket
@@ -23,8 +22,6 @@
             $roomId = $page.url.searchParams.get("room_id") || ""
             $gameType = $page.url.searchParams.get("game_type") || ""
             goto("/private", { replaceState: true })
-        } else {
-            nickname.focus()
         }
     })
 
@@ -102,7 +99,7 @@
                                 <label class="label" for="nickname">
                                     <span class="label-text">Nickname</span>
                                 </label>
-                                <input bind:this={nickname} id="nickname" type="text" placeholder="" bind:value = {$name} class="input input-bordered" required/>
+                                <input id="nickname" type="text" placeholder="" bind:value = {$name} class="input input-bordered" required/>
                                 <label class="label" for="room-id">
                                     <span class="label-text">Room ID</span>
                                 </label>

@@ -1,6 +1,5 @@
 import asyncio
 import json
-from tracemalloc import start
 from fastapi import FastAPI, WebSocketDisconnect, status, WebSocket
 from game import Game, Player
 from connect4 import Connect4
