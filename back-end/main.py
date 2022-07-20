@@ -467,6 +467,8 @@ async def predict_next_checkers_move(game: Checkers) -> Tuple[Tuple[int,int],Tup
                 
                 elif not piece.is_king and (move["possible_move"][1] == 7 and piece.owner == 1) or (move["possible_move"][1] == 0 and piece.owner == 2):
                     rank += 1
+                elif piece.is_king and (move["possible_move"][1] == 7 and piece.owner == 1) or (move["possible_move"][1] == 0 and piece.owner == 2):
+                    rank -= 100
                     
                 game.board[move["possible_move"][0]][move["possible_move"][1]] = 0
                 game.board[starting_position[0]][starting_position[1]] = piece

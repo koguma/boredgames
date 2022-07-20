@@ -174,7 +174,7 @@ class BoardGame(Game):
         self.vote_reset.add(player) # record the player calling a reset
 
         if self.dummy_plug:
-            if random() > 0.15:
+            if random() > 0.3:
                 self.vote_reset.add(self.dummy_plug)
 
         # reset the board if all player agree

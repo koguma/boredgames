@@ -89,8 +89,11 @@
                     board[eaten[0]][eaten[1]].setKing(false)
                 }
 
-                if (received["king"] == true && !board[current_position[0]][current_position[1]].isKing()) {
+                if (received["king"] && !board[current_position[0]][current_position[1]].isKing()) {
                     board[current_position[0]][current_position[1]].setKing(true)
+                    if (received.player == player) {
+                        successSound.play()
+                    }
                 }
 
                 board = board
