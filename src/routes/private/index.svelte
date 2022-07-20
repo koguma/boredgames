@@ -10,7 +10,6 @@
     import Checkers from '$lib/checkers.svelte'
     import { page } from '$app/stores'
     import { onMount } from 'svelte'
-    import { goto } from '$app/navigation'
 
     let joining = false
     let url = ""
@@ -21,7 +20,6 @@
         if ($page.url.searchParams.get("room_id") != null) {
             $roomId = $page.url.searchParams.get("room_id") || ""
             $gameType = $page.url.searchParams.get("game_type") || ""
-            goto("/private", { replaceState: true })
         }
     })
 

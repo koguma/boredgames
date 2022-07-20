@@ -3,15 +3,21 @@
 </svelte:head>
 
 <script lang="ts">
-    import {name, joinedRoom, error, gameType} from '$lib/stores'
+    import {name, joinedRoom, error, gameType, roomId} from '$lib/stores'
     import GameSelection from '$lib/gameSelection.svelte'
     import Connect4 from '$lib/connect4.svelte'
     import Error from '$lib/error.svelte'
     import Checkers from '$lib/checkers.svelte'
+import { onMount } from 'svelte';
+
 
     let joining = false
     let cancelRoom = false
     let socket : WebSocket
+
+    onMount(async() => {
+        $roomId = ""
+    })
 
     async function joinRoom() {
         if (!joining) {

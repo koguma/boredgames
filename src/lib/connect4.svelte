@@ -1,6 +1,6 @@
 <script lang="ts">
     import { onDestroy, onMount } from 'svelte';
-    import {name, joinedRoom, error, playAudio} from '$lib/stores'
+    import {name, joinedRoom, error, playAudio, roomId} from '$lib/stores'
 
     export let socket : WebSocket
 
@@ -95,7 +95,9 @@
                 count = 1
             }
         } )
-        await checkAFK()
+        if ($roomId != "") {
+            await checkAFK()
+        }
     })
 
     async function checkAFK() {

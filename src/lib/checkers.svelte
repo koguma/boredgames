@@ -1,6 +1,6 @@
 <script lang="ts">
     import { onDestroy, onMount } from 'svelte';
-    import {name, joinedRoom, error, playAudio} from '$lib/stores'
+    import {name, joinedRoom, error, playAudio, roomId} from '$lib/stores'
     import {Piece} from '$lib/checkersPiece'
 
     export let socket : WebSocket
@@ -89,9 +89,9 @@
                     board[eaten[0]][eaten[1]].setKing(false)
                 }
 
-                if (received["king"] && !board[current_position[0]][current_position[1]].isKing()) {
+                if (received["king"] == true && !board[current_position[0]][current_position[1]].isKing()) {
                     board[current_position[0]][current_position[1]].setKing(true)
-                    if (received.player == player) {
+                    if (received["player"] == player) {
                         successSound.play()
                     }
                 }
@@ -169,7 +169,9 @@
                 waiting = false
             }
         } )
-        await checkAFK()
+        if ($roomId != "") {
+            await checkAFK()
+        }
     })
 
     async function checkAFK() {
