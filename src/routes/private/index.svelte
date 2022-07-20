@@ -17,10 +17,8 @@
     let cancelRoom = false
 
     onMount(async() => {
-        if ($page.url.searchParams.get("room_id") != null) {
-            $roomId = $page.url.searchParams.get("room_id") || ""
-            $gameType = $page.url.searchParams.get("game_type") || ""
-        }
+        $roomId = $page.url.searchParams.get("room_id") || ""
+        $gameType = $page.url.searchParams.get("game_type") || ""
     })
 
     async function joinRoom() {

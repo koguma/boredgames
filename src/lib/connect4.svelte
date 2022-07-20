@@ -71,9 +71,11 @@
                 player = received["you"]
                 createBoard()
                 setTimeout(() => {
-                    socket.send(JSON.stringify({
-                        "event": "force-start"
-                    }))
+                    if ($roomId == "") {
+                        socket.send(JSON.stringify({
+                            "event": "force-start"
+                        }))
+                    }
                 }, 2500)
             }
             else if (received.event == "started") {
